@@ -6563,5 +6563,16 @@ window.addEventListener('load',async()=>{
   if(location.hash==='#selftest') setTimeout(runSelfTest,600);
 });
 </script>
+<script>
+(() => {
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  const isEnabled = new URLSearchParams(location.search).get('annotate') === '1';
+  if (!isLocal || !isEnabled) return;
+
+  const script = document.createElement('script');
+  script.src = './dev-agentation.bundle.js';
+  document.body.appendChild(script);
+})();
+</script>
 </body>
 </html>
