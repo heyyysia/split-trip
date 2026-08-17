@@ -783,12 +783,12 @@ select.input{
       </div>
     </details>
     <details class="faq-item">
-      <summary>現金和信用卡用哪一種匯率？</summary>
+      <summary>現金、信用卡和電子錢包用哪一種匯率？</summary>
       <div class="faq-a">
         系統會依記帳時選擇的「支付方式」自動套用匯率：
         <div style="margin-top:10px;padding:12px 14px;background:var(--surface);border-radius:12px;line-height:1.75;">
           <div><strong style="color:var(--t1);">信用卡支出</strong>：自動帶入「一般匯率」。</div>
-          <div style="margin-top:8px;"><strong style="color:var(--t1);">現金支出</strong>（依是否有「第三貨幣換匯」紀錄判斷）：</div>
+          <div style="margin-top:8px;"><strong style="color:var(--t1);">現金支出、電子錢包支出</strong>（Suica、支付寶等儲值餘額，錢是事先換好的；依是否有「第三貨幣換匯」紀錄判斷）：</div>
           <ul style="margin:4px 0 0;padding-left:1.25em;">
             <li style="padding-left:2px;"><strong style="color:var(--t1);">有紀錄</strong>：使用「第三貨幣換匯（平均）」。</li>
             <li style="padding-left:2px;"><strong style="color:var(--t1);">無紀錄</strong>：自動帶入「一般匯率」。</li>
@@ -832,7 +832,7 @@ select.input{
     </details>
     <details class="faq-item">
       <summary>當地換匯換了好幾次，匯率會怎麼算？</summary>
-      <div class="faq-a">每次換匯都記下來，系統會依各次金額計算「第三貨幣換匯（平均）」，該幣別的現金支出會自動使用這個結果。要查看或修改時，直接點 OMR、IDR 等幣別列。</div>
+      <div class="faq-a">每次換匯都記下來，系統會依各次金額計算「第三貨幣換匯（平均）」，該幣別的現金與電子錢包支出會自動使用這個結果。要查看或修改時，直接點 OMR、IDR 等幣別列。</div>
     </details>
     <details class="faq-item">
       <summary>怎麼修改或刪除換匯紀錄？</summary>
@@ -925,7 +925,7 @@ select.input{
     </details>
     <details class="faq-item">
       <summary>PDF 和 CSV 會顯示什麼？</summary>
-      <div class="faq-a">支出明細會在「付款人」前列出「支付方式」，顯示現金或信用卡。匯率摘要只列出實際參與支出或公款換算的匯率，並標示用於信用卡支出、現金支出、公款帳支出或公款存入；沒有支出的幣別不會列在摘要中。每一筆完整換匯紀錄仍會保留，包含日期、換出／換得幣別與金額、當時匯率和這次換匯成本。</div>
+      <div class="faq-a">支出明細會在「付款人」前列出「支付方式」，顯示現金、信用卡或電子錢包。匯率摘要只列出實際參與支出或公款換算的匯率，並標示用於信用卡支出、現金支出、電子錢包支出、公款帳支出或公款存入；沒有支出的幣別不會列在摘要中。每一筆完整換匯紀錄仍會保留，包含日期、換出／換得幣別與金額、當時匯率和這次換匯成本。</div>
     </details>
   </div>
 </div>
@@ -1129,12 +1129,12 @@ select.input{
       </div>
     </details>
     <details class="faq-item">
-      <summary>現金和信用卡用哪一種匯率？</summary>
+      <summary>現金、信用卡和電子錢包用哪一種匯率？</summary>
       <div class="faq-a">
         系統會依記帳時選擇的「支付方式」自動套用匯率：
         <div style="margin-top:10px;padding:12px 14px;background:var(--surface);border-radius:12px;line-height:1.75;">
           <div><strong style="color:var(--t1);">信用卡支出</strong>：自動帶入「一般匯率」。</div>
-          <div style="margin-top:8px;"><strong style="color:var(--t1);">現金支出</strong>（依是否有「第三貨幣換匯」紀錄判斷）：</div>
+          <div style="margin-top:8px;"><strong style="color:var(--t1);">現金支出、電子錢包支出</strong>（Suica、支付寶等儲值餘額，錢是事先換好的；依是否有「第三貨幣換匯」紀錄判斷）：</div>
           <ul style="margin:4px 0 0;padding-left:1.25em;">
             <li style="padding-left:2px;"><strong style="color:var(--t1);">有紀錄</strong>：使用「第三貨幣換匯（平均）」。</li>
             <li style="padding-left:2px;"><strong style="color:var(--t1);">無紀錄</strong>：自動帶入「一般匯率」。</li>
@@ -1178,7 +1178,7 @@ select.input{
     </details>
     <details class="faq-item">
       <summary>當地換匯換了好幾次，匯率會怎麼算？</summary>
-      <div class="faq-a">每次換匯都記下來，系統會依各次金額計算「第三貨幣換匯（平均）」，該幣別的現金支出會自動使用這個結果。要查看或修改時，直接點 OMR、IDR 等幣別列。</div>
+      <div class="faq-a">每次換匯都記下來，系統會依各次金額計算「第三貨幣換匯（平均）」，該幣別的現金與電子錢包支出會自動使用這個結果。要查看或修改時，直接點 OMR、IDR 等幣別列。</div>
     </details>
     <details class="faq-item">
       <summary>結算頁怎麼查看使用中的匯率？</summary>
@@ -1385,7 +1385,7 @@ select.input{
     <details class="faq-item">
       <summary>可以把帳目匯出保存嗎？</summary>
       <div class="faq-a">
-        可以。點右上角「⋯」選單，選「匯出支出/結算明細」，能存成／列印 PDF，或匯出 CSV 檔。支出明細會在「付款人」前列出「支付方式」，顯示現金或信用卡。匯率摘要只列出實際參與支出或公款換算的匯率，並標示實際用途；沒有支出的幣別不會列在摘要中。每一筆完整換匯紀錄仍會保留日期、換出／換得幣別與金額、當時匯率和這次換匯成本。
+        可以。點右上角「⋯」選單，選「匯出支出/結算明細」，能存成／列印 PDF，或匯出 CSV 檔。支出明細會在「付款人」前列出「支付方式」，顯示現金、信用卡或電子錢包。匯率摘要只列出實際參與支出或公款換算的匯率，並標示實際用途；沒有支出的幣別不會列在摘要中。每一筆完整換匯紀錄仍會保留日期、換出／換得幣別與金額、當時匯率和這次換匯成本。
         <div style="margin:8px 0 16px;padding:12px;background:var(--surface);border-radius:12px;">
           <svg viewBox="0 0 320 264" style="width:100%;max-width:300px;height:auto;display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="右上角「⋯」選單裡的「匯出支出/結算明細」">
             <text x="14" y="32" font-size="22" fill="#1F2A44" font-family="-apple-system,'Noto Sans TC',sans-serif">←</text>
@@ -1565,6 +1565,7 @@ select.input{
       <select id="in-exp-pay-method" class="input" onchange="App.previewTWD()">
         <option value="現金">💵 現金</option>
         <option value="信用卡">💳 信用卡</option>
+        <option value="電子錢包">👛 電子錢包（Suica、支付寶等）</option>
       </select>
     </div>
     <div class="mb3">
@@ -1995,14 +1996,20 @@ function _toBaseAtRate(amt,fromRateTwd,t,base){
   if(base==='TWD') return inTWD;
   return inTWD/generalRateTwd(t,base);
 }
+// 支付方式 → 用哪條匯率的唯一判斷點（改這裡就好，別在各顯示處自己比字串）。
+// 現金與電子錢包（Suica、支付寶等儲值餘額）花的都是「事先就換好的錢」，用實際平均換匯成本；
+// 信用卡是消費當下才換匯，用一般匯率。舊資料沒有 payMethod 時視同現金。
+const PAY_METHODS=['現金','信用卡','電子錢包'];
+function payMethodOf(e){return e?.payMethod||'現金';}
+function usesCashRate(payMethod){return (payMethod||'現金')!=='信用卡';}
+function payMethodUsageLabel(payMethod){return payMethodOf({payMethod})+'支出';}
 function expenseRateInfo(e,t){
   const cur=e?.currency||t?.baseCurrency||'TWD';
-  const isCash=(e?.payMethod||'現金')==='現金';
-  const weighted=isCash?cashRateInfo(t,cur):null;
+  const weighted=usesCashRate(payMethodOf(e))?cashRateInfo(t,cur):null;
   return {rateTwd:weighted?.rate||generalRateTwd(t,cur),source:weighted?'平均換匯成本':'一般匯率',weighted};
 }
 // 匯出檔的匯率摘要只列實際參與換算的匯率，並標示其用途。
-// 公款帳是付款帳戶而非支付方式，因此會和「現金／信用卡支出」分開標示。
+// 公款帳是付款帳戶而非支付方式，因此會和「現金／信用卡／電子錢包支出」分開標示。
 function exportRateUsageRows(t,expenses){
   const baseCur=t?.baseCurrency||'TWD';
   const fundIds=new Set((t?.members||[]).filter(m=>m.isGroupFund).map(m=>m.id));
@@ -2030,7 +2037,7 @@ function exportRateUsageRows(t,expenses){
     const code=e.currency||baseCur;
     if(code===baseCur) return;
     const info=expenseRateInfo(e,t);
-    add(code,info.source,(e.payMethod||'現金')==='現金'?'現金支出':'信用卡支出');
+    add(code,info.source,payMethodUsageLabel(payMethodOf(e)));
     const fundPaid=typeof e.paidBy==='string'
       ? fundIds.has(e.paidBy)
       : Object.entries(e.paidBy||{}).some(([id,amount])=>fundIds.has(id)&&Number(amount)>0);
@@ -2041,7 +2048,7 @@ function exportRateUsageRows(t,expenses){
     if(code===baseCur||!(Number(d?.amt)>0)) return;
     add(code,cashRateInfo(t,code)?'平均換匯成本':'一般匯率','公款存入');
   });
-  const usageOrder=['信用卡支出','現金支出','公款帳支出','公款存入'];
+  const usageOrder=['信用卡支出','現金支出','電子錢包支出','公款帳支出','公款存入'];
   return [...rows.values()]
     .sort((a,b)=>a.codeOrder-b.codeOrder||a.sourceOrder-b.sourceOrder)
     .map(row=>({...row,usage:[...row.usages].sort((a,b)=>usageOrder.indexOf(a)-usageOrder.indexOf(b)).join('、')}));
@@ -2801,22 +2808,22 @@ const App = {
     const viewExps=Object.values(t.expenses||{}).filter(e=>isGroup?this._isGroupExp(e,t):!this._isGroupExp(e,t));
     const usedCatsF=[...new Set(viewExps.map(e=>normCat(e.category||'其他')))].sort((a,b)=>{const ia=CAT_ORDER_F.indexOf(a),ib=CAT_ORDER_F.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib);});
     const usedPMF=[...new Set(viewExps.map(e=>e.payMethod).filter(Boolean))];
-    const hasCashF=usedPMF.includes('現金'); const hasCardF=usedPMF.includes('信用卡'); const hasPendingF=viewExps.some(e=>e.note==='金額待補');
+    const usedPMOrderedF=PAY_METHODS.filter(pm=>usedPMF.includes(pm));// 依固定順序列出這趟用過的支付方式,新增支付方式不必再改這裡
+    const hasPendingF=viewExps.some(e=>e.note==='金額待補');
     const fChipSty=(active,color)=>`height:26px;padding:0 10px;border-radius:6px;border:none;background:${active?(color||'var(--accent)'):'var(--surface)'};color:${active?'#fff':'var(--t1)'};font-size:12px;font-weight:${active?700:500};cursor:pointer;white-space:nowrap;`;
     const scrollRow=(label,content)=>`<div style="display:flex;align-items:center;gap:6px;margin-top:8px;"><span style="font-size:11px;color:var(--t2);font-weight:600;flex-shrink:0;white-space:nowrap;">${label}</span><div class="member-chips-scroll" style="flex:1;display:flex;flex-wrap:nowrap;gap:6px;align-items:center;min-width:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">${content}</div></div>`;
     const catChipsHTML=usedCatsF.length>0?scrollRow('類別',`<button type="button" onclick="App.setFilterCat(null)" style="${fChipSty(!fc)}">全部</button>${usedCatsF.map(cat=>`<button type="button" onclick="App.setFilterCat('${cat}')" style="${fChipSty(fc===cat)}">${cat}</button>`).join('')}`):'';
     const pendStyF=fChipSty(fp);
     const funcAllActiveF=!fp&&!fpm&&!fsm;
     const funcArrF=[`<button type="button" onclick="App._filterPending=false;App._filterPayMethod=null;App._filterSelfMode=null;App.renderTab();" style="${fChipSty(funcAllActiveF)}">全部</button>`];
-    if(hasCashF) funcArrF.push(`<button type="button" onclick="App.setFilterPayMethod('現金')" style="${fChipSty(fpm==='現金')}">現金</button>`);
-    if(hasCardF) funcArrF.push(`<button type="button" onclick="App.setFilterPayMethod('信用卡')" style="${fChipSty(fpm==='信用卡')}">信用卡</button>`);
+    usedPMOrderedF.forEach(pm=>funcArrF.push(`<button type="button" onclick="App.setFilterPayMethod('${pm}')" style="${fChipSty(fpm===pm)}">${pm}</button>`));
     if(hasPendingF) funcArrF.push(`<button type="button" onclick="if(!App._filterPending){App._filterPending=true;App._filterPayMethod=null;App._filterSelfMode=null;App._filterMember=null;App._filterCat=null;}else{App._filterPending=false;}App.renderTab();" style="${pendStyF}">待補金額</button>`);
     if(!isGroup){
       funcArrF.push(`<button type="button" onclick="App.setFilterSelfMode('self')" style="${fChipSty(fsm==='self')}">自購</button>`);
       funcArrF.push(`<button type="button" onclick="App.setFilterSelfMode('proxy')" style="${fChipSty(fsm==='proxy')}">代付</button>`);
       funcArrF.push(`<button type="button" onclick="App.setFilterSelfMode('extproxy')" style="${fChipSty(fsm==='extproxy')}">代購</button>`);
     }
-    const funcChipsHTML=(hasCashF||hasCardF||hasPendingF||!isGroup)?scrollRow('功能',funcArrF.join('')):'';
+    const funcChipsHTML=(usedPMOrderedF.length||hasPendingF||!isGroup)?scrollRow('功能',funcArrF.join('')):'';
     const filterRows=fex?(catChipsHTML+funcChipsHTML):'';
     const memberChips=(filterMembers.length>1||viewExps.length>0)?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
       <div style="display:flex;align-items:center;gap:6px;">
@@ -4181,7 +4188,7 @@ const App = {
       const _lastExpCur=_expListCur.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0];
       document.getElementById('in-exp-cur').value=(_lastExpCur&&_allExpCurs.includes(_lastExpCur.currency))?_lastExpCur.currency:'TWD';
       document.getElementById('in-exp-amt').value='';
-      document.getElementById('in-exp-pay-method').value='現金';
+      document.getElementById('in-exp-pay-method').value='信用卡';// 新增支出預設信用卡(使用者最常用);編輯舊帳仍讀原本的支付方式
     }
     document.getElementById('twd-hint').textContent='';
     document.getElementById('split-preview').innerHTML='';
@@ -4315,6 +4322,16 @@ const App = {
         countEl.textContent=n>0?`x${n}`:'';
       }
     }
+    // 分攤對象只剩 1 人時「平均/比例/自訂」沒有意義:比照自購收起三顆按鈕(保留「分攤方式」標題,畫面高度一致)
+    const _partsOn=Array.from(document.querySelectorAll('#in-exp-parts .chip.on')).filter(c=>c.id!=='cp-none'&&c.id!=='cp-extproxy');
+    if(_partsOn.length===1&&(this.splitMode==='proportion'||this.splitMode==='custom')){
+      this.splitMode='equal';
+      document.getElementById('sp-eq').className='btn btn-toggle on flex-1 btn-sm';
+      document.getElementById('sp-pr').className='btn btn-toggle flex-1 btn-sm';
+      document.getElementById('sp-cu').className='btn btn-toggle flex-1 btn-sm';
+    }
+    const _sbEl=document.getElementById('split-btns');
+    if(_sbEl) _sbEl.style.display=(this.splitMode==='self'||this.splitMode==='extproxy'||_partsOn.length<=1)?'none':'flex';
     if(this.splitMode==='self'){
       box.innerHTML=`<div style="background:#EEF0FF;border-radius:12px;padding:10px 14px;font-size:13px;color:var(--accent);font-weight:600;">✓ 自購 — 僅記錄支出，不計入分帳</div>`;
       return;
@@ -4922,7 +4939,7 @@ const App = {
         <button id="rates-tab-cash" class="tab-btn${ratesView==='cash'?' on':''}" type="button" role="tab" aria-selected="${ratesView==='cash'}" onclick="App.switchRatesView('cash')"><svg class="rates-tab-icon route" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4" cy="12" r="2.4" fill="#fff" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="1.7" fill="#fff" stroke="currentColor" stroke-width="1.8"/><circle cx="20" cy="12" r="2.4" fill="#fff" stroke="currentColor" stroke-width="1.8"/></svg><span>第三貨幣換匯</span></button>
       </div>
       <div id="rates-panel-general" class="rates-tab-panel" role="tabpanel" style="display:${ratesView==='general'?'block':'none'};">
-        <div class="rates-section-copy">適用於信用卡支出，以及未記錄「第三貨幣換匯」的現金支出。<br>由系統自動帶入參考匯率。</div>
+        <div class="rates-section-copy">適用於信用卡支出，以及未記錄「第三貨幣換匯」的現金／電子錢包支出。<br>由系統自動帶入參考匯率。</div>
         <div class="rates-status">
           <div class="rates-status-top">
             <div class="rates-status-title" id="rates-status-title">預設值為市場參考匯率</div>
@@ -4963,7 +4980,7 @@ const App = {
           <div class="rates-section-title">換匯紀錄</div>
           <button type="button" class="rates-inline-action" onclick="App.openFxExchange()">＋ 記錄換匯</button>
         </div>
-        ${fxSummary?`<div class="card rates-fx-list">${fxSummary}</div>`:`<div style="padding:30px 16px;text-align:center;background:var(--surface);border-radius:16px;color:var(--t2);font-size:12px;line-height:1.7;">目前還沒有換匯紀錄<br>加入後，現金支出會自動使用平均換匯成本。</div>`}
+        ${fxSummary?`<div class="card rates-fx-list">${fxSummary}</div>`:`<div style="padding:30px 16px;text-align:center;background:var(--surface);border-radius:16px;color:var(--t2);font-size:12px;line-height:1.7;">目前還沒有換匯紀錄<br>加入後，現金與電子錢包支出會自動使用平均換匯成本。</div>`}
       </div>
       <div style="height:20px;"></div>
       <div class="rates-save-bar" id="rates-unsaved">
@@ -6411,8 +6428,10 @@ function runSelfTest(){
     const s3=calcExp({amount:12.5,currency:'OMR',payMethod:'現金',paidBy:'A',parts:['A','B','C'],splitMode:'equal',createdAt:3},t1);
     const s3Card=calcExp({amount:12.5,currency:'OMR',payMethod:'信用卡',paidBy:'A',parts:['A','B','C'],splitMode:'equal',createdAt:3},t1);
     const s3Fallback=calcExp({amount:12.5,currency:'OMR',payMethod:'現金',paidBy:'A',parts:['A','B','C'],splitMode:'equal',createdAt:3},{...t1,fxExchanges:[]});
+    const s3Wallet=calcExp({amount:12.5,currency:'OMR',payMethod:'電子錢包',paidBy:'A',parts:['A','B','C'],splitMode:'equal',createdAt:3},t1);
+    const _walletUsage=exportRateUsageRows(t1,[{amount:12.5,currency:'OMR',payMethod:'電子錢包',paidBy:'A',parts:['A'],splitMode:'self'}])[0];
     const _snapshotStillSame=cashRateInfo({...t1,rates:{...t1.rates,USD:99}},'OMR').rate===cashRateInfo(t1,'OMR').rate;
-    ok('中繼換算:現金換匯成本/信用卡一般/無紀錄回退/當時匯率保留',s3.baseTotal===Math.round(12.5*_fxRate)&&s3Card.baseTotal===Math.round(12.5*85.5)&&s3Fallback.baseTotal===s3Card.baseTotal&&cashRateTwd(t1,'USD')===32&&Object.values(s3.shares).reduce((a,b)=>a+b,0)===s3.baseTotal&&_snapshotStillSame);
+    ok('中繼換算:現金/電子錢包換匯成本、信用卡一般、無紀錄回退、當時匯率保留',s3.baseTotal===Math.round(12.5*_fxRate)&&s3Card.baseTotal===Math.round(12.5*85.5)&&s3Fallback.baseTotal===s3Card.baseTotal&&s3Wallet.baseTotal===s3.baseTotal&&_walletUsage?.usage==='電子錢包支出'&&_walletUsage?.source==='平均換匯成本'&&cashRateTwd(t1,'USD')===32&&Object.values(s3.shares).reduce((a,b)=>a+b,0)===s3.baseTotal&&_snapshotStillSame);
     const w=ts=>{const s=calcExp({amount:100,currency:'TWD',paidBy:'A',parts:['A','B','C'],splitMode:'equal',createdAt:ts},t0).shares;return Object.entries(s).find(([,v])=>v===34)[0];};
     ok('尾差輪流分配(逐筆換人)',new Set([w(10),w(11),w(12)]).size>1);
     const fx={id:'__st',name:'驗收',baseCurrency:'TWD',rates:{OMR:85.5},payRecords:[],
