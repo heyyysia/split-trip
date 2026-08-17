@@ -4108,7 +4108,7 @@ const App = {
     const _restCurs=_allExpCurs.filter(c=>!_usedCurs.includes(c));
     const _mkCurOpt=c=>{
       const zhName=CUR_ZH[c]||(t.customCurrencies||[]).find(cc=>cc.code===c)?.name||c;
-      return `<option value="${c}">${curFlag(c)} ${c} ${zhName}</option>`;
+      return `<option value="${c}">${c} ${zhName}</option>`;
     };
     curSel.innerHTML=_usedCurs.map(_mkCurOpt).join('')
       +(_usedCurs.length&&_restCurs.length?`<option disabled>──────────</option>`:'')
