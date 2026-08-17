@@ -1562,12 +1562,12 @@ select.input{
     </div>
     <div class="mb3">
       <label class="form-label">支付方式</label>
-      <select id="in-exp-pay-method" class="input" onchange="App.previewTWD()">
+      <select id="in-exp-pay-method" class="input" onchange="App.previewTWD();App.payMethodLabels(false)"
+        onmousedown="App.payMethodLabels(true)" ontouchstart="App.payMethodLabels(true)" onfocus="App.payMethodLabels(true)" onblur="App.payMethodLabels(false)">
         <option value="現金">💵 現金</option>
         <option value="信用卡">💳 信用卡</option>
         <option value="電子錢包">👛 電子錢包</option>
       </select>
-      <div class="form-hint">電子錢包：Suica、T-money、支付寶等儲值餘額</div>
     </div>
     <div class="mb3">
       <label class="form-label">金額</label>
@@ -4192,6 +4192,7 @@ const App = {
       document.getElementById('in-exp-pay-method').value='信用卡';// 新增支出預設信用卡(使用者最常用);編輯舊帳仍讀原本的支付方式
     }
     document.getElementById('twd-hint').textContent='';
+    this.payMethodLabels(false);// 開窗一律先收成短標籤,避免上次展開的長文字殘留把收合框撐爆
     document.getElementById('split-preview').innerHTML='';
     const _sb=document.getElementById('split-btns');
     if(_sb) _sb.style.display='flex';
@@ -4220,6 +4221,21 @@ const App = {
         this.updateCustomTotal();
       }
     },80);
+  },
+
+  // 支付方式下拉:展開時顯示完整說明,收合後只留短名稱。
+  // 原生 select 的收合文字就是選項文字本身,沒辦法分開設定,只能在點開的瞬間換長、選完換回短。
+  // 若某些瀏覽器不觸發 mousedown/touchstart(直接開清單),最差就是展開也只看到短名稱,不會壞掉。
+  _PM_LONG:{'電子錢包':'👛 電子錢包（Suica、T-money、支付寶等儲值餘額）'},
+  _PM_SHORT:{'電子錢包':'👛 電子錢包'},
+  payMethodLabels(expand){
+    const sel=document.getElementById('in-exp-pay-method');
+    if(!sel) return;
+    const map=expand?this._PM_LONG:this._PM_SHORT;
+    Array.from(sel.options).forEach(o=>{
+      const txt=map[o.value];
+      if(txt&&o.text!==txt) o.text=txt;
+    });
   },
 
   togglePart(id){
