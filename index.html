@@ -1560,7 +1560,7 @@ select.input{
       </div>
       <div id="payer-multi" style="display:none;"></div>
     </div>
-    <div class="mb3">
+    <div class="mb3" id="pay-method-row">
       <label class="form-label">支付方式</label>
       <select id="in-exp-pay-method" class="input" onchange="App.previewTWD();App.payMethodLabels(false)"
         onmousedown="App.payMethodLabels(true)" ontouchstart="App.payMethodLabels(true)" onfocus="App.payMethodLabels(true)" onblur="App.payMethodLabels(false)">
@@ -1583,6 +1583,7 @@ select.input{
         </select>
         <input id="in-exp-amt" class="input flex-1" type="text" inputmode="decimal" placeholder="0" oninput="App.fmtAmtInput(this);App.previewTWD()">
       </div>
+      <div id="amt-auto-note" class="form-hint" style="display:none;color:var(--t2);">💡 多人付款模式：金額＝各付款人合計，系統自動計算</div>
       <div id="twd-hint" class="form-hint"></div>
       <div style="margin-top:6px;font-size:12px;color:var(--t2);">如需其他貨幣請至<a href="javascript:void(0)" onclick="App.closeModal('m-expense');App.go('rates');" style="color:var(--accent);text-decoration:underline;">匯率設定</a>增加</div>
     </div>
@@ -1852,10 +1853,10 @@ const normCat=c=>_VALID_CATS.has(c)?c:'其他';
 const CAT_SUGGESTIONS={
   '餐飲':[['🌅','早餐'],['🍱','中餐'],['🍽️','晚餐'],['☕','咖啡廳'],['🏪','便利超商'],['🛒','超市雜貨'],['🍢','路邊攤'],['🥤','飲料'],['🍺','酒'],['🛵','外送'],['🥖','麵包店'],['🍰','甜點']],
   '住宿':[['','飯店'],['','民宿'],['','airbnb'],['','青年旅館'],['','露營']],
-  '交通':[['','地鐵'],['','火車'],['','公車'],['','計程車'],['✈️','飛機'],['','租汽車'],['','停車費'],['','加油費'],['','過路費'],['','租機車'],['','租腳踏車'],['','租電動滑板車'],['','渡輪'],['','纜車'],['','交通票券']],
+  '交通':[['','地鐵'],['','火車'],['','公車'],['','計程車'],['✈️','飛機'],['','租汽車'],['','停車費'],['','加油費'],['','過路費'],['','租機車'],['','租腳踏車'],['','租電動滑板車'],['','渡輪'],['','纜車'],['','交通票券'],['','觀光車']],
   '玩樂':[['','導覽團'],['','遊樂園'],['','動物園'],['','水族館'],['','景點'],['','博物館'],['','展覽'],['','祭典'],['','表演秀'],['','賞鯨團'],['','水上活動'],['','滑雪'],['','SPA按摩'],['','髮廊'],['','溫泉'],['','郵輪'],['','體驗課'],['','電影院'],['','卡拉OK'],['','保齡球'],['','夜店'],['','密室逃脫'],['','網咖'],['','租借費']],
   '購物':[['','伴手禮'],['','紀念品'],['','代購'],['','美妝'],['','藥妝'],['','3C電器'],['','日用品'],['','服飾'],['','鞋子'],['','配件'],['','運動服飾'],['','玩具'],['','扭蛋'],['','超市']],
-  '其他':[['','保險'],['','簽證'],['','藥局'],['','小費'],['','SIM卡'],['','換匯手續費'],['','行李寄放'],['','置物櫃'],['','洗衣費'],['','行李費']],
+  '其他':[['','保險'],['','簽證'],['','藥局'],['','小費'],['','SIM卡'],['','換匯手續費'],['','行李寄放'],['','置物櫃'],['','洗衣費'],['','行李費'],['','郵票郵資']],
 };
 
 // ─── STORAGE ─────────────────────────────────────────────────
@@ -2002,6 +2003,23 @@ function _toBaseAtRate(amt,fromRateTwd,t,base){
 // 信用卡是消費當下才換匯，用一般匯率。舊資料沒有 payMethod 時視同現金。
 const PAY_METHODS=['現金','信用卡','電子錢包'];
 function payMethodOf(e){return e?.payMethod||'現金';}
+// 多人各自方式:取某付款人的支付方式(無 payMethods 時回退整筆 payMethod)
+function payMethodOfPayer(e,id){return (e&&e.payMethods&&e.payMethods[id])||e?.payMethod||'現金';}
+// 一筆支出對外顯示的支付方式:多人各自方式時,全同顯示該方式、不同顯示「混合」
+function payMethodLabel(e){
+  if(e&&e.payMethods&&typeof e.paidBy==='object'&&e.paidBy){
+    const ms=[...new Set(Object.entries(e.paidBy).filter(([,v])=>Number(v)>0).map(([id])=>payMethodOfPayer(e,id)))];
+    return ms.length<=1?(ms[0]||e.payMethod||'現金'):'混合';
+  }
+  return e?.payMethod||'現金';
+}
+// 這筆支出是否用到某支付方式(篩選用:多人各自方式時,任一付款人相符即算)
+function expUsesPayMethod(e,pm){
+  if(e&&e.payMethods&&typeof e.paidBy==='object'&&e.paidBy){
+    return Object.entries(e.paidBy).some(([id,v])=>Number(v)>0&&payMethodOfPayer(e,id)===pm);
+  }
+  return (e?.payMethod||'現金')===pm;
+}
 function usesCashRate(payMethod){return (payMethod||'現金')!=='信用卡';}
 function payMethodUsageLabel(payMethod){return payMethodOf({payMethod})+'支出';}
 function expenseRateInfo(e,t){
@@ -2037,12 +2055,23 @@ function exportRateUsageRows(t,expenses){
     if(!e||e.note==='金額待補'||!(Number(e.amount)>0)) return;
     const code=e.currency||baseCur;
     if(code===baseCur) return;
-    const info=expenseRateInfo(e,t);
-    add(code,info.source,payMethodUsageLabel(payMethodOf(e)));
-    const fundPaid=typeof e.paidBy==='string'
-      ? fundIds.has(e.paidBy)
-      : Object.entries(e.paidBy||{}).some(([id,amount])=>fundIds.has(id)&&Number(amount)>0);
-    if(fundPaid) add(code,info.source,'公款帳支出');
+    // 多人各自方式:把實際用到的每一種支付方式都列進匯率摘要
+    const mixedPay=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy;
+    if(mixedPay){
+      const methods=new Set();
+      Object.entries(e.paidBy).forEach(([id,v])=>{if(Number(v)>0)methods.add(e.payMethods[id]||e.payMethod||'現金');});
+      methods.forEach(pm=>add(code,expenseRateInfo({...e,payMethod:pm},t).source,payMethodUsageLabel(pm)));
+    }else{
+      const info=expenseRateInfo(e,t);
+      add(code,info.source,payMethodUsageLabel(payMethodOf(e)));
+    }
+    const fundPaidEntry=typeof e.paidBy==='object'&&e.paidBy
+      ? Object.entries(e.paidBy).find(([id,amount])=>fundIds.has(id)&&Number(amount)>0)
+      : (fundIds.has(e.paidBy)?[e.paidBy]:null);
+    if(fundPaidEntry){
+      const fundPm=mixedPay?(e.payMethods[fundPaidEntry[0]]||e.payMethod):payMethodOf(e);
+      add(code,expenseRateInfo({...e,payMethod:fundPm},t).source,'公款帳支出');
+    }
   });
   (t?.fundDeposits||[]).forEach(d=>{
     const code=d?.cur||baseCur;
@@ -2108,7 +2137,14 @@ function calcExp(e,t){
   const base=t.baseCurrency||'TWD';
   const cur=e.currency||base;
   const pending=e.note==='金額待補';
-  const baseTotal=pending?0:Math.round(expenseToBase(e.amount,e,t));
+  // 多人各自支付方式(2026-09-06 起):paidBy 為物件且有 payMethods 時,每人用自己的方式換匯
+  const mixedPay=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy;
+  const pmOf=id=>(e.payMethods&&e.payMethods[id])||e.payMethod;
+  const baseTotal=pending?0:Math.round(
+    mixedPay
+      ? Object.entries(e.paidBy).reduce((s,[id,v])=>Number(v)>0?s+expenseToBase(v,{...e,payMethod:pmOf(id)},t):s,0)
+      : expenseToBase(e.amount,e,t)
+  );
   // 分攤對象一律限一般成員:公款帳只能當付款人,不參與分攤(與結算頁原始語意一致)
   const regIds=(t.members||[]).filter(m=>!m.isGroupFund).map(m=>m.id);
   const ps=(e.parts||regIds).filter(id=>regIds.includes(id));
@@ -2127,7 +2163,7 @@ function calcExp(e,t){
   let paid={};
   if(!pending&&baseTotal!==0){
     if(typeof e.paidBy==='object'&&e.paidBy){
-      const rawP={};Object.entries(e.paidBy).forEach(([id,v])=>{if(v>0)rawP[id]=expenseToBase(v,e,t);});
+      const rawP={};Object.entries(e.paidBy).forEach(([id,v])=>{if(v>0)rawP[id]=expenseToBase(v,mixedPay?{...e,payMethod:pmOf(id)}:e,t);});
       paid=lrmRound(rawP,baseTotal);
     }else if(e.paidBy){paid={[e.paidBy]:baseTotal};}
   }
@@ -2734,7 +2770,7 @@ const App = {
       });
     }
     if(fc) allExps=allExps.filter(e=>normCat(e.category||'其他')===fc);
-    if(this._filterPayMethod) allExps=allExps.filter(e=>e.payMethod===this._filterPayMethod);
+    if(this._filterPayMethod) allExps=allExps.filter(e=>expUsesPayMethod(e,this._filterPayMethod));
     if(fsm==='self') allExps=allExps.filter(e=>{const ps=e.parts||(t.members||[]).filter(m=>!m.isGroupFund).map(m=>m.id);return e.splitMode==='self'||(ps.length===1&&ps[0]===(typeof e.paidBy==='string'?e.paidBy:Object.keys(e.paidBy||{})[0]));});
     else if(fsm==='proxy') allExps=allExps.filter(e=>{const ps=e.parts||(t.members||[]).filter(m=>!m.isGroupFund).map(m=>m.id);return e.splitMode!=='self'&&e.splitMode!=='extproxy'&&ps.length===1&&ps[0]!==(typeof e.paidBy==='string'?e.paidBy:Object.keys(e.paidBy||{})[0]);});
     else if(fsm==='extproxy') allExps=allExps.filter(e=>e.splitMode==='extproxy');
@@ -2808,7 +2844,10 @@ const App = {
     const CAT_ORDER_F=['餐飲','住宿','交通','玩樂','購物','其他'];
     const viewExps=Object.values(t.expenses||{}).filter(e=>isGroup?this._isGroupExp(e,t):!this._isGroupExp(e,t));
     const usedCatsF=[...new Set(viewExps.map(e=>normCat(e.category||'其他')))].sort((a,b)=>{const ia=CAT_ORDER_F.indexOf(a),ib=CAT_ORDER_F.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib);});
-    const usedPMF=[...new Set(viewExps.map(e=>e.payMethod).filter(Boolean))];
+    const usedPMF=[...new Set(viewExps.flatMap(e=>{
+      if(e.payMethods&&typeof e.paidBy==='object'&&e.paidBy) return Object.entries(e.paidBy).filter(([,v])=>Number(v)>0).map(([id])=>payMethodOfPayer(e,id));
+      return e.payMethod?[e.payMethod]:[];
+    }).filter(Boolean))];
     const usedPMOrderedF=PAY_METHODS.filter(pm=>usedPMF.includes(pm));// 依固定順序列出這趟用過的支付方式,新增支付方式不必再改這裡
     const hasPendingF=viewExps.some(e=>e.note==='金額待補');
     const fChipSty=(active,color)=>`height:26px;padding:0 10px;border-radius:6px;border:none;background:${active?(color||'var(--accent)'):'var(--surface)'};color:${active?'#fff':'var(--t1)'};font-size:12px;font-weight:${active?700:500};cursor:pointer;white-space:nowrap;`;
@@ -2878,7 +2917,7 @@ const App = {
     }
     if(fp) exps=exps.filter(([,e])=>e.note==='金額待補');
     else if(fc) exps=exps.filter(([,e])=>normCat(e.category||'其他')===fc);
-    if(fpm) exps=exps.filter(([,e])=>e.payMethod===fpm);
+    if(fpm) exps=exps.filter(([,e])=>expUsesPayMethod(e,fpm));
     if(fsm==='self') exps=exps.filter(([,e])=>{const ps=e.parts||(t.members||[]).filter(m=>!m.isGroupFund).map(m=>m.id);return e.splitMode==='self'||(ps.length===1&&ps[0]===(typeof e.paidBy==='string'?e.paidBy:Object.keys(e.paidBy||{})[0]));});
     else if(fsm==='proxy') exps=exps.filter(([,e])=>{const ps=e.parts||(t.members||[]).filter(m=>!m.isGroupFund).map(m=>m.id);return e.splitMode!=='self'&&e.splitMode!=='extproxy'&&ps.length===1&&ps[0]!==(typeof e.paidBy==='string'?e.paidBy:Object.keys(e.paidBy||{})[0]);});
     else if(fsm==='extproxy') exps=exps.filter(([,e])=>e.splitMode==='extproxy');
@@ -2912,7 +2951,8 @@ const App = {
       const sym=curSym(e.currency);
       const symFmt=amt=>fmtCur(amt,e.currency);
       const dispAmt=fm&&typeof e.paidBy==='object'&&e.paidBy!==null?(e.paidBy[fm]||0):e.amount;
-      const twdA=expenseToBase(dispAmt,e,t);
+      const _cCard=calcExp(e,t);// 引擎整數:多人各自方式時 ≈台幣 才會逐人正確加總
+      const twdA=fm&&typeof e.paidBy==='object'&&e.paidBy!==null?(_cCard.paid[fm]||0):_cCard.baseTotal;
       const ps=e.parts||t.members.map(m=>m.id);
       const nonFundCount=t.members.filter(m=>!m.isGroupFund).length;
       let partsLabel;
@@ -2931,8 +2971,9 @@ const App = {
       const chevronExp=`<svg width="12" height="12" viewBox="0 0 10 10" style="margin-left:4px;vertical-align:middle;flex-shrink:0;transition:transform .2s;transform:${isExpExp?'rotate(180deg)':'rotate(0deg)'}"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
       let expandedDetail='';
       if(isExpExp){
+        const _mixedCard=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy!==null;
         const payerLabel=typeof e.paidBy==='object'&&e.paidBy!==null
-          ?Object.entries(e.paidBy).map(([pid,amt])=>{const m=t.members.find(m=>m.id===pid);return `${m?.name||'?'} ${symFmt(fmtNum(amt))}`;}).join('、')
+          ?Object.entries(e.paidBy).map(([pid,amt])=>{const m=t.members.find(m=>m.id===pid);return `${m?.name||'?'} ${symFmt(fmtNum(amt))}${_mixedCard?`（${payMethodOfPayer(e,pid)}）`:''}`;}).join('、')
           :(t.members.find(m=>m.id===e.paidBy)?.name||'?');
         const splitLabelFull=e.splitMode==='self'?'自購':e.splitMode==='custom'?'自訂金額':e.splitMode==='proportion'?'按比例':'平均分攤';
         let partsLabelDetail;
@@ -2958,7 +2999,7 @@ const App = {
           <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
             ${e.date?`<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--t2);">${e.dateEnd?'期間':'日期'}</span><span>${this.expenseDateText(e)}</span></div>`:''}
             <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--t2);">支付人</span><span style="font-weight:600;">${payerLabel}</span></div>
-            ${e.payMethod?`<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--t2);">支付方式</span><span>${e.payMethod}</span></div>`:''}
+            ${e.payMethod?`<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--t2);">支付方式</span><span>${payMethodLabel(e)}</span></div>`:''}
             <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--t2);">分攤方式</span><span>${splitLabelFull}</span></div>
             <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--t2);">分攤成員</span><span>${partsLabelDetail}</span></div>
           </div>
@@ -4146,14 +4187,14 @@ const App = {
       document.getElementById('in-exp-name').value=e.name;
       document.getElementById('in-exp-cur').value=e.currency;
       document.getElementById('in-exp-amt').value=e.amount;this.fmtAmtInput(document.getElementById('in-exp-amt'));
+      document.getElementById('in-exp-pay-method').value=e.payMethod||'現金';
       if(typeof e.paidBy==='object'&&e.paidBy!==null){
         this.setPayerMode('multi');
-        this.renderMultiPayerList(e.paidBy);
+        this.renderMultiPayerList(e.paidBy,e.payMethods||null);
       } else {
         this.setPayerMode('single');
         document.getElementById('in-exp-paid').value=e.paidBy;
       }
-      document.getElementById('in-exp-pay-method').value=e.payMethod||'現金';
       t.members.forEach(m=>{
         document.getElementById(`cp-${m.id}`)?.classList.toggle('on',(e.parts||[]).includes(m.id));
       });
@@ -4374,9 +4415,9 @@ const App = {
       const shFmt=fmtNum(sh);
       const bSym=(C[t.baseCurrency]||C.TWD).sym;
       const showTWD=cur!==t.baseCurrency;
+      const _rmul=this._previewRateMul(cur,t);
       const rows=parts.map(pid=>{
-        const draft={currency:cur,payMethod:document.getElementById('in-exp-pay-method')?.value||'現金'};
-        const shTWD=expenseToBase(sh,draft,t);
+        const shTWD=sh*_rmul;
         return `<div class="flex justify-between items-center" style="padding:6px 0;border-bottom:1px solid var(--border);">
           <span style="font-size:14px;font-weight:600;">${mName(pid)}</span>
           <div style="text-align:right;">
@@ -4392,7 +4433,7 @@ const App = {
           <span style="font-size:12px;color:var(--t2);">合計</span>
           <div style="text-align:right;">
             <div style="font-size:13px;font-weight:700;">${sym}${fmtNum(amt)}</div>
-            ${showTWD?`<div style="font-size:11px;color:var(--t2);">≈ ${bSym}${Math.round(expenseToBase(amt,{currency:cur,payMethod:document.getElementById('in-exp-pay-method')?.value||'現金'},t)).toLocaleString()}</div>`:''}
+            ${showTWD?`<div style="font-size:11px;color:var(--t2);">≈ ${bSym}${Math.round(amt*_rmul).toLocaleString()}</div>`:''}
           </div>
         </div>
       </div>`;
@@ -4470,30 +4511,50 @@ const App = {
     if(multi) multi.style.display=mode==='multi'?'':'none';
     if(sBtn){sBtn.style.background=mode==='single'?'var(--accent)':'var(--surface)';sBtn.style.color=mode==='single'?'#fff':'var(--t2)';}
     if(mBtn){mBtn.style.background=mode==='multi'?'var(--accent)':'var(--surface)';mBtn.style.color=mode==='multi'?'#fff':'var(--t2)';}
-    if(mode==='multi') this.renderMultiPayerList();
+    const amtEl=document.getElementById('in-exp-amt');
+    const autoNote=document.getElementById('amt-auto-note');
+    const pmRow=document.getElementById('pay-method-row');
+    if(mode==='multi'){
+      if(amtEl){amtEl.readOnly=true;amtEl.style.background='var(--surface)';amtEl.style.color='var(--t2)';amtEl.style.cursor='not-allowed';}
+      if(autoNote) autoNote.style.display='';
+      if(pmRow) pmRow.style.display='none';// 多人各自選支付方式,收起共用欄
+      this.renderMultiPayerList();
+    } else {
+      if(amtEl){amtEl.readOnly=false;amtEl.style.background='';amtEl.style.color='';amtEl.style.cursor='';}
+      if(autoNote) autoNote.style.display='none';
+      if(pmRow) pmRow.style.display='';
+    }
   },
-  renderMultiPayerList(prefill=null){
+  renderMultiPayerList(prefill=null,prefillMethods=null){
     const t=loadTrip(this.tripId);
     if(!t) return;
     const box=document.getElementById('payer-multi');
     if(!box) return;
     const cur=document.getElementById('in-exp-cur')?.value||'TWD';
     const sym=C[cur]?.sym||(cur+' ');
-    box.innerHTML=`<div style="background:var(--surface);border-radius:12px;padding:12px;border:1px solid var(--border);">`+
-      t.members.map(m=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <span style="font-size:13px;font-weight:600;width:52px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.name.slice(0,5)}</span>
+    // 每列預設帶入切換前選的共用支付方式(回退現金);編輯既有支出則用該筆各人紀錄
+    const defPm=document.getElementById('in-exp-pay-method')?.value||'現金';
+    const pmIcon={'現金':'💵','信用卡':'💳','電子錢包':'👛'};
+    const box2=`<div style="background:var(--surface);border-radius:12px;padding:12px;border:1px solid var(--border);">`+
+      t.members.map(m=>{
+        const rowPm=(prefillMethods&&prefillMethods[m.id])||defPm;
+        return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:600;width:48px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.name.slice(0,5)}</span>
         <span style="font-size:13px;flex-shrink:0;">${sym}</span>
-        <input type="text" inputmode="decimal" id="mp-${m.id}" class="input" style="flex:1;height:38px;font-size:14px;text-align:right;" placeholder="0"
+        <input type="text" inputmode="decimal" id="mp-${m.id}" class="input" style="flex:1;min-width:0;height:38px;font-size:14px;text-align:right;" placeholder="0"
           value="${prefill&&prefill[m.id]?prefill[m.id]:''}" oninput="App.fmtAmtInput(this);App.updateMultiPayerHint()">
-      </div>`).join('')+
+        <select id="mpm-${m.id}" class="input" style="width:96px;flex-shrink:0;height:38px;font-size:12px;padding:0 4px;" onchange="App.updateMultiPayerHint()">
+          ${PAY_METHODS.map(pm=>`<option value="${pm}"${pm===rowPm?' selected':''}>${pmIcon[pm]||''} ${pm}</option>`).join('')}
+        </select>
+      </div>`;}).join('')+
       `<div id="multi-payer-hint" style="font-size:12px;color:var(--t2);margin-top:4px;text-align:right;"></div></div>`;
+    box.innerHTML=box2;
     if(prefill) box.querySelectorAll('input[type="text"]').forEach(el=>this.fmtAmtInput(el));
     this.updateMultiPayerHint();
   },
   updateMultiPayerHint(){
     const t=loadTrip(this.tripId);
     if(!t) return;
-    const rawAmt=parseFloat(document.getElementById('in-exp-amt')?.value.replace(/,/g,'')||'0')||0;
     const cur=document.getElementById('in-exp-cur')?.value||'TWD';
     const sym=C[cur]?.sym||(cur+' ');
     let total=0;
@@ -4501,11 +4562,34 @@ const App = {
       const v=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;
       total+=v;
     });
+    // 多人模式:金額欄自動＝各付款人合計(唯讀),並帶動下方分攤與匯率預覽;
+    // 合計為 0 時(例如剛切到多人、還沒填)不覆蓋金額欄,避免清掉使用者原本輸入
+    const amtEl=document.getElementById('in-exp-amt');
+    if(amtEl&&this._payerMode==='multi'){
+      if(total>0){const newVal=fmtNum(total);if(amtEl.value!==newVal)amtEl.value=newVal;}
+      this.previewTWD();// 每次金額或支付方式變動都刷新 ≈台幣與試算(支付方式改了也要重算換匯)
+    }
     const hint=document.getElementById('multi-payer-hint');
     if(!hint) return;
-    const ok=rawAmt>0&&Math.abs(total-rawAmt)<0.5;
-    hint.textContent=`合計 ${sym}${fmtNum(total)} / ${sym}${fmtNum(rawAmt)}`;
-    hint.style.color=ok?'var(--success)':'#EF4444';
+    hint.textContent=`付款合計 ${sym}${fmtNum(total)}`;
+    hint.style.color='var(--t2)';
+  },
+  // 預覽用:把「支出幣別金額」換成基準幣的倍率。多人各自方式時取各人加權後的混合倍率,
+  // 讓 ≈台幣 與試算和存檔後 calcExp 的結果一致(存檔是逐人整數,預覽是加權近似)。
+  _previewRateMul(cur,t){
+    const base=t.baseCurrency||'TWD';
+    if(cur===base) return 1;
+    if(this._payerMode==='multi'){
+      let amtTot=0,baseTot=0;
+      (t.members||[]).forEach(m=>{
+        const v=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;
+        if(v>0){const pm=document.getElementById(`mpm-${m.id}`)?.value||'現金';amtTot+=v;baseTot+=expenseToBase(v,{currency:cur,payMethod:pm},t);}
+      });
+      if(amtTot>0) return baseTot/amtTot;
+      return expenseToBase(1,{currency:cur,payMethod:'現金'},t);
+    }
+    const pm=document.getElementById('in-exp-pay-method')?.value||'現金';
+    return expenseToBase(1,{currency:cur,payMethod:pm},t);
   },
 
   pickNote(btn,name){
@@ -4563,7 +4647,7 @@ const App = {
         el.textContent=pct===0?'未分攤':`${sym}${fmtNum(share)}`;
         el.style.color=pct===0?'#EF4444':'var(--t1)';
         if(elTWD&&showTWD2&&t2){
-          const shTWD=expenseToBase(share,{currency:cur,payMethod:document.getElementById('in-exp-pay-method')?.value||'現金'},t2);
+          const shTWD=share*this._previewRateMul(cur,t2);
           elTWD.textContent=`≈ ${bSym2}${Math.round(shTWD).toLocaleString()}`;
         } else if(elTWD) elTWD.textContent='';
       } else {
@@ -4589,7 +4673,7 @@ const App = {
       total+=v;
       const elTWD=document.getElementById(`ctwd-${pid}`);
       if(elTWD&&showTWD&&t&&v>0){
-        const vTWD=expenseToBase(v,{currency:cur,payMethod:document.getElementById('in-exp-pay-method')?.value||'現金'},t);
+        const vTWD=v*this._previewRateMul(cur,t);
         elTWD.textContent=`≈ ${bSym}${Math.round(vTWD).toLocaleString()}`;
       } else if(elTWD) elTWD.textContent='';
     });
@@ -4776,6 +4860,15 @@ const App = {
     const t=loadTrip(this.tripId);
     const base=t?.baseCurrency||'TWD';
     if(!amt||isNaN(amt)||cur===base||cur==='OTHER'){hint.textContent='';}
+    else if(this._payerMode==='multi'){
+      // 多人各自方式:用加權混合倍率換算,若各人方式不同標「混合換匯」
+      const mul=this._previewRateMul(cur,t);
+      const inBase=amt*mul;
+      const methods=new Set((t?.members||[]).filter(m=>parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')>0).map(m=>document.getElementById(`mpm-${m.id}`)?.value||'現金'));
+      const bSym=(C[base]||C.TWD).sym;
+      const srcLabel=methods.size>1?'混合換匯':expenseRateInfo({currency:cur,payMethod:[...methods][0]||'現金'},t).source;
+      hint.textContent=`≈ ${bSym}${Math.round(inBase).toLocaleString()}（${srcLabel} ${(mul>=1?+mul.toFixed(2):+mul.toPrecision(4))}）`;
+    }
     else{
       const draft={currency:cur,payMethod:document.getElementById('in-exp-pay-method')?.value||'現金'};
       const info=expenseRateInfo(draft,t);
@@ -4800,11 +4893,11 @@ const App = {
     const amount=isPending?0:rawAmount;
     if(!name){this.showToast('請輸入支出項目');return;}
     if(!isPending&&(!amount||isNaN(amount)||amount<=0)){this.showToast('請輸入有效金額，或備註填入「金額待補」');return;}
-    let paidBy;
+    let paidBy,payMethods=null;
     if(this._payerMode==='multi'){
       const _t=loadTrip(this.tripId);
-      paidBy={};let _payTot=0;
-      _t.members.forEach(m=>{const v=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;if(v>0){paidBy[m.id]=v;_payTot+=v;}});
+      paidBy={};let _payTot=0;payMethods={};
+      _t.members.forEach(m=>{const v=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;if(v>0){paidBy[m.id]=v;_payTot+=v;payMethods[m.id]=document.getElementById(`mpm-${m.id}`)?.value||'現金';}});
       if(!Object.keys(paidBy).length){this.showToast('請輸入付款金額');return;}
       if(!isPending&&Math.abs(_payTot-amount)>0.5){this.showToast(`付款合計 ${_payTot.toLocaleString()} ≠ 支出金額 ${amount.toLocaleString()}`);return;}
     } else {
@@ -4849,7 +4942,7 @@ const App = {
     const date=(dateEl.dataset.start||dateInput.slice(0,10)).slice(0,10);
     const dateEnd=(dateEl.dataset.end||'').slice(0,10);
     if(dateEnd&&dateEnd<date){this.showToast('結束日期不能早於開始日期');return;}
-    const exp={category,payMethod,name,amount:isPending?0:amount,currency,paidBy,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
+    const exp={category,payMethod,name,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
     // 編輯時保留原 createdAt:它是「多付一元輪流」的種子與同日排序依據,改掉會讓尾差換人、順序跳動
     if(this.editId){const _old=t.expenses[this.editId];t.expenses[this.editId]={..._old,...exp,createdAt:_old?.createdAt??exp.createdAt};}
     else{t.expenses[uid()]=exp;}
@@ -5631,8 +5724,9 @@ const App = {
       const expCur=e.currency||baseCur;
       const isPending=e.note==='金額待補';
       const ps=e.parts||members.map(m=>m.id);
+      const _mixPayPdf=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy;
       const payer=typeof e.paidBy==='object'
-        ? Object.entries(e.paidBy).filter(([,amt])=>amt>0).map(([pid,amt])=>`${members.find(m=>m.id===pid)?.name||'?'}(${Number(amt).toLocaleString()})`).join('<br>')
+        ? Object.entries(e.paidBy).filter(([,amt])=>amt>0).map(([pid,amt])=>`${members.find(m=>m.id===pid)?.name||'?'}(${Number(amt).toLocaleString()}${_mixPayPdf?'·'+payMethodOfPayer(e,pid):''})`).join('<br>')
         : (members.find(m=>m.id===e.paidBy)?.name||'?');
       const _c=ENG.perExp[e._k]||calcExp(e,t);// 引擎結果:整數總額/分攤/實付
       const baseTotalNum=_c.baseTotal;
@@ -5675,7 +5769,7 @@ const App = {
         <td style="${tdS}">${e.category||'其他'}</td>
         <td style="${tdS}font-weight:600;">${e.name}</td>
         ${curCells}
-        <td style="${tdS}border-left:2.5px solid #9CA3AF;text-align:center;">${e.payMethod||'現金'}</td>
+        <td style="${tdS}border-left:2.5px solid #9CA3AF;text-align:center;">${payMethodLabel(e)}</td>
         <td style="${tdS}text-align:center;">${payer}</td>
         <td style="${tdS}text-align:center;">${_splitLbl}</td>
         <td style="${tdS}text-align:center;">${ps.length}</td>
@@ -6088,8 +6182,9 @@ const App = {
         const expCur=e.currency||baseCur;
         const isPending=e.note==='金額待補';
         const ps=e.parts||members.map(m=>m.id);
+        const _mixPayCsv=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy;
         const payer=typeof e.paidBy==='object'
-          ? Object.entries(e.paidBy).filter(([,amt])=>amt>0).map(([pid,amt])=>`${members.find(m=>m.id===pid)?.name||'?'}(${Number(amt).toLocaleString()})`).join(' + ')
+          ? Object.entries(e.paidBy).filter(([,amt])=>amt>0).map(([pid,amt])=>`${members.find(m=>m.id===pid)?.name||'?'}(${Number(amt).toLocaleString()}${_mixPayCsv?'·'+payMethodOfPayer(e,pid):''})`).join(' + ')
           : (members.find(m=>m.id===e.paidBy)?.name||'?');
         const _c=ENG.perExp[e._k]||calcExp(e,t);// 引擎整數
         const baseTotalNum=_c.baseTotal;
@@ -6119,7 +6214,7 @@ const App = {
             fundCells=[parseFloat(_omrAmt.toFixed(3)),fundAmt];
           } else {fundCells=['',''];}
         }
-        const row=[this.expenseDateText(e),e.category||'其他',e.name,...curCells,e.payMethod||'現金',payer,splitModeLabel,ps.length,isPending?'待補':baseTotalNum,isPending?'':unitPrice,...regularMemberCells,...fundCells];
+        const row=[this.expenseDateText(e),e.category||'其他',e.name,...curCells,payMethodLabel(e),payer,splitModeLabel,ps.length,isPending?'待補':baseTotalNum,isPending?'':unitPrice,...regularMemberCells,...fundCells];
         csv+=row.map(esc).join(',')+'\n';
       });
     };
