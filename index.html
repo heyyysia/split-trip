@@ -1547,7 +1547,7 @@ select.input{
       <!-- 外送開關(僅餐飲顯示):勾選後顯示時項目前會加「外送-」 -->
       <div id="delivery-toggle-wrap" style="display:none;margin-bottom:8px;align-items:center;gap:8px;">
         <button type="button" id="delivery-toggle" onclick="App.toggleDelivery()" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;color:var(--t1);cursor:pointer;white-space:nowrap;">🛵 外送</button>
-        <span style="font-size:11px;color:var(--t2);">勾選後項目前會顯示「外送-」</span>
+        <span style="font-size:12px;color:var(--t2);">是否為外送</span>
       </div>
       <input id="in-exp-name" class="input" placeholder="選擇下方標籤自動帶入 或 自行輸入" maxlength="30" onblur="if(this.value.endsWith('-'))this.value=this.value.slice(0,-1);">
       <div id="cat-suggestions" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;"></div>
