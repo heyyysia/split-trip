@@ -1544,6 +1544,11 @@ select.input{
     </div>
     <div class="mb3">
       <label class="form-label">支出項目</label>
+      <!-- 外送開關(僅餐飲顯示):勾選後顯示時項目前會加「外送-」 -->
+      <div id="delivery-toggle-wrap" style="display:none;margin-bottom:8px;align-items:center;gap:8px;">
+        <button type="button" id="delivery-toggle" onclick="App.toggleDelivery()" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;color:var(--t1);cursor:pointer;white-space:nowrap;">🛵 外送</button>
+        <span style="font-size:11px;color:var(--t2);">勾選後項目前會顯示「外送-」</span>
+      </div>
       <input id="in-exp-name" class="input" placeholder="選擇下方標籤自動帶入 或 自行輸入" maxlength="30" onblur="if(this.value.endsWith('-'))this.value=this.value.slice(0,-1);">
       <div id="cat-suggestions" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;"></div>
       <!-- 交通專用:出發地 → 目的地(第二行);其他類別隱藏 -->
@@ -1865,7 +1870,7 @@ const CAT_ICON={'餐飲':'🍜','住宿':'🛏️','交通':'🚌','玩樂':'�
 const _VALID_CATS=new Set(['餐飲','住宿','交通','玩樂','購物','其他']);
 const normCat=c=>_VALID_CATS.has(c)?c:'其他';
 const CAT_SUGGESTIONS={
-  '餐飲':[['🌅','早餐'],['🍱','中餐'],['🍽️','晚餐'],['☕','咖啡廳'],['🏪','便利超商'],['🛒','超市雜貨'],['🍢','路邊攤'],['🥤','飲料'],['🍺','酒'],['🛵','外送'],['🥖','麵包店'],['🍰','甜點']],
+  '餐飲':[['🌅','早餐'],['🍱','中餐'],['🍽️','晚餐'],['☕','咖啡廳'],['🏪','便利超商'],['🛒','超市雜貨'],['🍢','路邊攤'],['🥤','飲料'],['🍺','酒'],['🥖','麵包店'],['🍰','甜點']],
   '住宿':[['','飯店'],['','民宿'],['','airbnb'],['','青年旅館'],['','露營']],
   '交通':[['','地鐵'],['','火車'],['','公車'],['','計程車'],['✈️','飛機'],['','租汽車'],['','停車費'],['','加油費'],['','過路費'],['','租機車'],['','租腳踏車'],['','租滑板車'],['','渡輪'],['','纜車'],['','交通票券'],['','觀光車'],['','包車']],
   '玩樂':[['','導覽團'],['','遊樂園'],['','動物園'],['','水族館'],['','景點'],['','博物館'],['','展覽'],['','祭典'],['','表演秀'],['','賞鯨團'],['','水上活動'],['','滑雪'],['','SPA按摩'],['','髮廊'],['','溫泉'],['','郵輪'],['','體驗課'],['','電影院'],['','卡拉OK'],['','保齡球'],['','夜店'],['','密室逃脫'],['','網咖'],['','租借費']],
@@ -2036,8 +2041,9 @@ function expUsesPayMethod(e,pm){
 }
 // 交通支出顯示名稱:接上「出發地→目的地」(其他類別或無填則只顯示項目名)
 function expDisplayName(e){
-  const nm=e?.name||'';
-  if(e&&e.category==='交通'&&(e.from||e.to)) return `${nm} ${e.from||''}→${e.to||''}`.trim();
+  let nm=e?.name||'';
+  if(e&&e.isDelivery) nm='外送-'+nm;// 外送:顯示時在項目前加前綴(不改存的項目名)
+  if(e&&e.category==='交通'&&(e.from||e.to)) nm=`${nm} ${e.from||''}→${e.to||''}`.trim();
   return nm;
 }
 function usesCashRate(payMethod){return (payMethod||'現金')!=='信用卡';}
@@ -2249,7 +2255,7 @@ function avText(name){ return (name||'?').slice(0,2); }
 // ─── APP ──────────────────────────────────────────────────────
 const App = {
   screen:'landing', tripId:null, expId:null,
-  tab:'expenses', editId:null, splitMode:'equal', pending:null, _payerMode:'single', _proxyFor:'',
+  tab:'expenses', editId:null, splitMode:'equal', pending:null, _payerMode:'single', _proxyFor:'', _isDelivery:false,
   _deferredInstall:null, _appInstalled:false,
   _summaryView:'group', _filterCat:null, _filterPending:false, _filterMember:null, _filterPayMethod:null, _filterSelfMode:null, _filterPartsFor:null, _filterGroupScope:null, _jumpOriginMember:null, _collapseAnchor:null, _filterExpanded:false, _showAddMember:false, _addAsFund:false, _editingMember:null, _createAvatar:null, _editAvatar:null, _settleCur:null, _summaryIncludePersonal:true, _expandedMemberSummary:{}, _expandedDebt:{}, _editingDebt:{}, _expandedHistoric:{}, _expandedExp:{}, _fundCardExpanded:false, _payRecExpanded:false, _editingFundDeposits:false,
 
@@ -4194,6 +4200,7 @@ const App = {
     document.getElementById('sp-cu').disabled=false;
     this._proportions=null;
     this._proxyFor='';// 代購對象預設清空;編輯 extproxy 會在下方回填
+    this._isDelivery=false;// 外送預設關;編輯若為餐飲外送會在下方回填
     this.setPayerMode('single');// 預設一人;編輯載入若為多人會在下方覆寫(不可放在 if 之後,否則會蓋掉多人)
     const todayStr=(()=>{const d=new Date();return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;})();
     if(eid){
@@ -4210,6 +4217,7 @@ const App = {
       // 交通:回填出發地/目的地(顯示切換交給 setTimeout 內的 updateCatSuggestions(false))
       document.getElementById('in-exp-from').value=e.from||'';
       document.getElementById('in-exp-to').value=e.to||'';
+      this._isDelivery=!!e.isDelivery;// 外送回填(顯示/勾選狀態交給 updateCatSuggestions)
       document.getElementById('in-exp-cur').value=e.currency;
       document.getElementById('in-exp-amt').value=e.amount;this.fmtAmtInput(document.getElementById('in-exp-amt'));
       document.getElementById('in-exp-pay-method').value=e.payMethod||'現金';
@@ -4353,6 +4361,19 @@ const App = {
     this.updateSplitPreview();
   },
 
+  toggleDelivery(){
+    this._isDelivery=!this._isDelivery;
+    this._updateDeliveryChip();
+  },
+  _updateDeliveryChip(){
+    const btn=document.getElementById('delivery-toggle');
+    if(!btn) return;
+    const on=!!this._isDelivery;
+    btn.style.background=on?'var(--accent)':'#fff';
+    btn.style.color=on?'#fff':'var(--t1)';
+    btn.style.borderColor=on?'var(--accent)':'var(--border)';
+    btn.textContent=(on?'✓ ':'🛵 ')+'外送';
+  },
   onProxyForInput(el){
     if(!el) return;
     this._proxyFor=el.value;
@@ -4558,8 +4579,20 @@ const App = {
       routeEl.style.display=cat==='交通'?'':'none';
       if(clearName&&cat!=='交通'){const f=document.getElementById('in-exp-from'),to=document.getElementById('in-exp-to');if(f)f.value='';if(to)to.value='';}
     }
+    // 外送開關只在餐飲顯示;切離餐飲(換類別時)取消勾選
+    const delWrap=document.getElementById('delivery-toggle-wrap');
+    if(delWrap){
+      delWrap.style.display=cat==='餐飲'?'flex':'none';
+      if(clearName&&cat!=='餐飲') this._isDelivery=false;
+      this._updateDeliveryChip();
+    }
     const items=CAT_SUGGESTIONS[cat]||[];
     box.innerHTML=items.map(([,name])=>`<button type="button" class="sug-chip" onclick="App.pickSuggestion(this,'${name}')" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;transition:all .15s;">${name}</button>`).join('');
+    // 使用者手動切到「住宿」(clearName=true 代表 onchange)且尚未設區間→自動彈出日期選擇器(區間模式)
+    if(clearName&&cat==='住宿'){
+      const dEl=document.getElementById('in-exp-date');
+      if(dEl&&!dEl.dataset.end) setTimeout(()=>this.openDatePicker('in-exp-date'),0);
+    }
   },
   setPayerMode(mode){
     this._payerMode=mode;
@@ -4954,6 +4987,8 @@ const App = {
     // 交通:出發地/目的地(僅交通類別存,其他類別留 null)
     const routeFrom=category==='交通'?(document.getElementById('in-exp-from')?.value.trim()||''):'';
     const routeTo=category==='交通'?(document.getElementById('in-exp-to')?.value.trim()||''):'';
+    // 外送:僅餐飲類別有效
+    const isDelivery=(category==='餐飲')&&!!this._isDelivery;
     const rawAmount=parseFloat(document.getElementById('in-exp-amt').value.replace(/,/g,''));
     const currency=document.getElementById('in-exp-cur').value;
     let note=document.getElementById('in-exp-note')?.value.trim()||'';
@@ -5011,7 +5046,7 @@ const App = {
     const date=(dateEl.dataset.start||dateInput.slice(0,10)).slice(0,10);
     const dateEnd=(dateEl.dataset.end||'').slice(0,10);
     if(dateEnd&&dateEnd<date){this.showToast('結束日期不能早於開始日期');return;}
-    const exp={category,payMethod,name,from:routeFrom||null,to:routeTo||null,proxyFor:proxyFor||null,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
+    const exp={category,payMethod,name,from:routeFrom||null,to:routeTo||null,proxyFor:proxyFor||null,isDelivery:isDelivery||null,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
     // 編輯時保留原 createdAt:它是「多付一元輪流」的種子與同日排序依據,改掉會讓尾差換人、順序跳動
     if(this.editId){const _old=t.expenses[this.editId];t.expenses[this.editId]={..._old,...exp,createdAt:_old?.createdAt??exp.createdAt};}
     else{t.expenses[uid()]=exp;}
