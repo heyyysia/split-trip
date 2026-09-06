@@ -6403,7 +6403,7 @@ const App = {
     // 群組 TTL：直接用顯示累積值，確保欄位加總 = TTL
     const _intGrpTotalCsv=regularMembersCsv.reduce((s,m)=>s+(memberGroupShareDisplayCsv[m.id]||0),0);
     const _fundSpentLocalCsv=fundSpentBaseCsv>0?parseFloat((fundSpentBaseCsv/fundLocalRateCsv).toFixed(3)).toLocaleString(undefined,{maximumFractionDigits:3}):'0';
-    const groupTtlRow=['TTL','群組支出','',...groupCurTotals,'',...empties(2),_intGrpTotalCsv,'',...regularMembersCsv.map(m=>memberGroupShareDisplayCsv[m.id]||0),...(hasFund?[`實際支出 ${_fundSpentLocalCsv} ${fundLocalCurCsv}`,fundSpentIntCsv]:[])];
+    const groupTtlRow=['TTL','群組支出','',...groupCurTotals,...empties(4),_intGrpTotalCsv,'',...regularMembersCsv.map(m=>memberGroupShareDisplayCsv[m.id]||0),...(hasFund?[`實際支出 ${_fundSpentLocalCsv} ${fundLocalCurCsv}`,fundSpentIntCsv]:[])];
     csv+=groupTtlRow.map(esc).join(',')+'\n';
     // 公費存入 rows（與 PDF 一致）
     if(hasFund&&totalFundDepositRawCsv>0.5){
@@ -6436,9 +6436,10 @@ const App = {
         Object.entries(c.shares).forEach(([pid,v])=>{if(loc[pid]!==undefined)loc[pid]+=v;});
       });
       regularMembersCsv.forEach(m=>{memberPersonalShareAccCsv[m.id]+=(loc[m.id]||0);});
-      csv+=['TTL',label,'',...curTtls,'',...empties(2),tot,'',...regularMembersCsv.map(m=>(loc[m.id]||0)||''),...(hasFund?['','']:[])].map(esc).join(',')+'\n';
+      csv+=['TTL',label,'',...curTtls,...empties(4),tot,'',...regularMembersCsv.map(m=>(loc[m.id]||0)||''),...(hasFund?['','']:[])].map(esc).join(',')+'\n';
     };
     if(personalExps.length){
+      csv+='\n';// 區段間空一行分隔(CSV 無框線,用空白列當區隔)
       sectionRow('個人支出明細');
       const proxyExpsCsv=personalExps.filter(e=>_isProxyCsv(e));
       const selfExpsCsv=personalExps.filter(e=>!_isProxyCsv(e));
@@ -6464,8 +6465,9 @@ const App = {
     // 總花費 = 實際花費(群組份額不含公費餘額退款 + 個人份額),與 PDF/網頁成員總覽一致
     const _floorCombSharesCsv=regularMembersCsv.map(m=>(memberGroupShareDisplayCsv[m.id]||0)+(memberPersonalShareAccCsv[m.id]||0));
     const _intCombTotalCsv=_floorCombSharesCsv.reduce((s,v)=>s+v,0);
+    csv+='\n';// 區段間空一行分隔
     sectionRow('整趟旅程完整花費（群組＋個人）');
-    const ttlRow1=['合計','全部支出','',...combinedCurTotals,'',...empties(2),_intCombTotalCsv,'總花費',..._floorCombSharesCsv,...(hasFund?['','']:[])];
+    const ttlRow1=['合計','全部支出','',...combinedCurTotals,...empties(4),_intCombTotalCsv,'總花費',..._floorCombSharesCsv,...(hasFund?['','']:[])];
     const ttlRow1b=[...empties(fixedLeft+allCurs.length+fixedMid-1),'已存入公費',...regularMembersCsv.map(m=>_depIntCsv[m.id]||''),...(hasFund?['','']:[])];
     // 公費差額:退款與補繳分列，順序與 PDF 一致
     const _refundNoteCsv='共同開銷均分若有餘數，會輪流由不同人多付；差異依公費支出筆數而定，通常僅差幾元。';
@@ -6770,7 +6772,17 @@ function runSelfTest(){
     const _csvFundCases=_csvFundMixed
       &&_refundOnlyCsv.includes('公費退款（＋）')&&!_refundOnlyCsv.includes('公費補繳（−）')
       &&!_topupOnlyCsv.includes('公費退款（＋）')&&_topupOnlyCsv.includes('公費補繳（−）');
-    ok(`CSV 逐列驗算(${cChecked} 列)+日期區間+換匯紀錄+支付方式+公費差額`,cChecked>5&&cBad===0&&_csvHasDateRange&&_csvHasFx&&_csvHasPayMethod&&_csvRateUsage&&_csvFundCases,cBad?`${cBad} 列不一致`:(!_csvHasDateRange?'缺少日期區間':(!_csvHasFx?'缺少換匯紀錄':(!_csvHasPayMethod?'缺少支付方式':(!_csvRateUsage?'匯率用途或篩選錯誤':(!_csvFundCases?'公費退款／補繳條件或順序錯誤':''))))));
+    // TTL/合計 列欄位對齊:合計必須落在「總金額」欄、且成員欄加總=該合計(防「合計跑錯欄、成員整排位移」)
+    const _csvLines=(csvText||'').replace(/^﻿/,'').split('\n').map(pl);
+    const _hdrC=_csvLines.find(c=>c.includes('支付方式')&&c.includes('付款人'))||[];
+    const _iTotC=_hdrC.findIndex(h=>h.indexOf('總金額')===0);
+    const _numC=s=>{if(s===''||s==='—')return null;const m=String(s).match(/^-?\d+(\.\d+)?$/);return m?parseFloat(s):null;};
+    const _regCountC=fx.members.filter(m=>!m.isGroupFund).length;
+    const _ttlAligned=finder=>{const r=_csvLines.find(finder);if(!r||r.length!==_hdrC.length)return false;const t=_numC(r[_iTotC]);if(t===null)return false;let s=0;for(let i=_iTotC+2;i<_iTotC+2+_regCountC;i++)s+=_numC(r[i])||0;return s===t;};
+    const _csvTtlAligned=_iTotC>=0
+      &&_ttlAligned(c=>c[0]==='TTL'&&c[1]==='群組支出')
+      &&_ttlAligned(c=>c[0]==='合計'&&c[1]==='全部支出');
+    ok(`CSV 逐列驗算(${cChecked} 列)+TTL欄位對齊+日期區間+換匯紀錄+支付方式+公費差額`,cChecked>5&&cBad===0&&_csvTtlAligned&&_csvHasDateRange&&_csvHasFx&&_csvHasPayMethod&&_csvRateUsage&&_csvFundCases,cBad?`${cBad} 列不一致`:(!_csvTtlAligned?'TTL 合計欄位未對齊':(!_csvHasDateRange?'缺少日期區間':(!_csvHasFx?'缺少換匯紀錄':(!_csvHasPayMethod?'缺少支付方式':(!_csvRateUsage?'匯率用途或篩選錯誤':(!_csvFundCases?'公費退款／補繳條件或順序錯誤':'')))))));
   }catch(err){ok('執行過程發生錯誤',false,String(err));}
   const allPass=R.every(r=>r.pass);
   const el=document.createElement('div');
