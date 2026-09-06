@@ -520,7 +520,7 @@ select.input{
   <div id="trip-filter-outer" style="display:none;flex-shrink:0;padding:8px 20px;background:var(--bg);border-bottom:1px solid var(--border);"></div>
   <div class="scroll pb-fab" id="trip-content"></div>
   <button class="fab" id="fab" onclick="App.showAddExpense()">+</button>
-  <div id="back-to-summary-bar" style="display:none;position:fixed;bottom:32px;left:calc(var(--app-side) + 20px);z-index:998;"><button type="button" onclick="App.backToMemberSummary()" style="height:44px;border-radius:999px;background:#fff;color:var(--accent);border:1.5px solid var(--accent);cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.15);display:flex;align-items:center;gap:6px;padding:0 16px;max-width:250px;" title="返回花費總覽"><span style="font-size:17px;font-weight:700;flex-shrink:0;">←</span><span id="back-to-summary-label" style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span></button></div>
+  <button id="back-to-summary-bar" type="button" onclick="App.backToMemberSummary()" style="display:none;position:fixed;bottom:32px;left:calc(var(--app-side) + 20px);z-index:1000;height:44px;border-radius:999px;background:#fff;color:var(--accent);border:1.5px solid var(--accent);cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.15);align-items:center;gap:6px;padding:0 16px;max-width:250px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;" title="返回花費總覽"><span style="font-size:17px;font-weight:700;flex-shrink:0;">←</span><span id="back-to-summary-label" style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span></button>
   <div id="footer-slogan">
     <div style="flex:1;height:1px;background:#E6E8EC;"></div>
     <div style="width:8px;height:8px;background:#C4C7CE;transform:rotate(45deg);flex-shrink:0;margin:0 8px;"></div>
@@ -1621,7 +1621,7 @@ select.input{
         <button type="button" onclick="App.pickNote(this,'金額待補')" class="note-chip" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;">金額待補</button>
         <button type="button" onclick="App.pickNote(this,'代購代付')" class="note-chip" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;">代購代付</button>
         <button type="button" onclick="App.pickNote(this,'含小費')" class="note-chip" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;">含小費</button>
-        <button type="button" onclick="App.pickNote(this,'含城市住宿稅')" class="note-chip" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;">含城市住宿稅</button>
+        <button type="button" onclick="App.pickNote(this,'含住宿稅')" class="note-chip" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;">含住宿稅</button>
         <button type="button" onclick="App.pickNote(this,'含入湯稅')" class="note-chip" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;">含入湯稅</button>
       </div>
     </div>
@@ -1869,7 +1869,7 @@ const CAT_SUGGESTIONS={
   '住宿':[['','飯店'],['','民宿'],['','airbnb'],['','青年旅館'],['','露營']],
   '交通':[['','地鐵'],['','火車'],['','公車'],['','計程車'],['✈️','飛機'],['','租汽車'],['','停車費'],['','加油費'],['','過路費'],['','租機車'],['','租腳踏車'],['','租滑板車'],['','渡輪'],['','纜車'],['','交通票券'],['','觀光車'],['','包車']],
   '玩樂':[['','導覽團'],['','遊樂園'],['','動物園'],['','水族館'],['','景點'],['','博物館'],['','展覽'],['','祭典'],['','表演秀'],['','賞鯨團'],['','水上活動'],['','滑雪'],['','SPA按摩'],['','髮廊'],['','溫泉'],['','郵輪'],['','體驗課'],['','電影院'],['','卡拉OK'],['','保齡球'],['','夜店'],['','密室逃脫'],['','網咖'],['','租借費']],
-  '購物':[['','伴手禮'],['','紀念品'],['','代購'],['','美妝'],['','藥妝'],['','藥局'],['','3C電器'],['','日用品'],['','服飾'],['','鞋子'],['','配件'],['','運動服飾'],['','玩具'],['','扭蛋'],['','超市'],['','明信片']],
+  '購物':[['','伴手禮'],['','紀念品'],['','代購'],['','美妝'],['','藥妝'],['','藥局'],['','超市'],['','3C電器'],['','日用品'],['','服飾'],['','鞋子'],['','配件'],['','運動相關'],['','玩具'],['','扭蛋'],['','明信片']],
   '其他':[['','保險'],['','簽證'],['','小費'],['','SIM卡'],['','漫遊'],['','換匯手續費'],['','行李寄放'],['','置物櫃'],['','洗衣費'],['','行李費'],['','郵資'],['','寄送費']],
 };
 
@@ -2249,7 +2249,7 @@ function avText(name){ return (name||'?').slice(0,2); }
 // ─── APP ──────────────────────────────────────────────────────
 const App = {
   screen:'landing', tripId:null, expId:null,
-  tab:'expenses', editId:null, splitMode:'equal', pending:null, _payerMode:'single',
+  tab:'expenses', editId:null, splitMode:'equal', pending:null, _payerMode:'single', _proxyFor:'',
   _deferredInstall:null, _appInstalled:false,
   _summaryView:'group', _filterCat:null, _filterPending:false, _filterMember:null, _filterPayMethod:null, _filterSelfMode:null, _filterPartsFor:null, _filterGroupScope:null, _jumpOriginMember:null, _collapseAnchor:null, _filterExpanded:false, _showAddMember:false, _addAsFund:false, _editingMember:null, _createAvatar:null, _editAvatar:null, _settleCur:null, _summaryIncludePersonal:true, _expandedMemberSummary:{}, _expandedDebt:{}, _editingDebt:{}, _expandedHistoric:{}, _expandedExp:{}, _fundCardExpanded:false, _payRecExpanded:false, _editingFundDeposits:false,
 
@@ -2962,7 +2962,7 @@ const App = {
     const _jomName=_jom?(t.members.find(m=>m.id===_jom)?.name||''):'';
     const _bar=document.getElementById('back-to-summary-bar');
     const _lbl=document.getElementById('back-to-summary-label');
-    if(_bar){_bar.style.display=_jom?'block':'none';}
+    if(_bar){_bar.style.display=_jom?'flex':'none';}
     if(_lbl&&_jomName) _lbl.textContent=`返回${_jomName}的花費總覽`;
     if(!allExps.length){c.innerHTML=`<div class="empty"><div class="empty-title">目前尚無支出記錄</div><div class="empty-sub">點右下角 + 新增第一筆</div></div><div style="padding:20px 0 80px;"></div>`;return;}
     c.innerHTML=(exps.length?exps.map(([id,e])=>{
@@ -4193,6 +4193,7 @@ const App = {
     document.getElementById('sp-pr').disabled=false;
     document.getElementById('sp-cu').disabled=false;
     this._proportions=null;
+    this._proxyFor='';// 代購對象預設清空;編輯 extproxy 會在下方回填
     this.setPayerMode('single');// 預設一人;編輯載入若為多人會在下方覆寫(不可放在 if 之後,否則會蓋掉多人)
     const todayStr=(()=>{const d=new Date();return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;})();
     if(eid){
@@ -4234,6 +4235,7 @@ const App = {
         t.members.forEach(m=>document.getElementById(`cp-${m.id}`)?.classList.remove('on'));
         document.getElementById('cp-none')?.classList.remove('on');
         document.getElementById('cp-extproxy')?.classList.add('on');
+        this._proxyFor=e.proxyFor||e.name||'';// 回填代購對象(舊資料無此欄則用項目名)
         const sb=document.getElementById('split-btns');
         if(sb) sb.style.display='none';
       } else if(this.splitMode==='proportion'){
@@ -4346,12 +4348,19 @@ const App = {
     this.updateSplitPreview();
   },
 
+  onProxyForInput(el){
+    this._proxyFor=el.value;
+    const nameEl=document.getElementById('in-exp-name');
+    if(nameEl) nameEl.value=el.value;// 代購對象即時帶入上方「支出項目」
+  },
   toggleExtProxy(){
     const extBtn=document.getElementById('cp-extproxy');
     const turning=!extBtn?.classList.contains('on');
     document.querySelectorAll('#in-exp-parts .chip').forEach(c=>{if(c.id!=='cp-extproxy') c.classList.remove('on');});
     extBtn?.classList.toggle('on',turning);
     this.splitMode=turning?'extproxy':'equal';
+    // 開啟代購:用目前已填的支出項目當代購對象種子;關閉:清空
+    this._proxyFor=turning?(document.getElementById('in-exp-name')?.value||''):'';
     const splitBtns=document.getElementById('split-btns');
     if(splitBtns) splitBtns.style.display=turning?'none':'flex';
     if(!turning){
@@ -4420,7 +4429,14 @@ const App = {
       return;
     }
     if(this.splitMode==='extproxy'){
-      box.innerHTML=`<div style="background:#EEF0FF;border-radius:12px;padding:10px 14px;font-size:13px;color:var(--accent);font-weight:600;">✓ 代購（外部成員）— 僅記錄採購，不計入分帳</div>`;
+      // 代購對象輸入框:內容即時帶入上方「支出項目」。用 this._proxyFor 記住,避免金額變動重繪時被清空
+      const _pf=this._esc?this._esc(this._proxyFor||''):(this._proxyFor||'');
+      box.innerHTML=`<div style="background:#EEF0FF;border-radius:12px;padding:10px 14px;font-size:13px;color:var(--accent);font-weight:600;">✓ 代購（外部成員）— 僅記錄採購，不計入分帳</div>
+        <div style="margin-top:10px;">
+          <label class="form-label" style="font-size:12px;color:var(--t2);margin-bottom:4px;">代購對象</label>
+          <input id="in-exp-proxyfor" class="input" placeholder="幫誰買的？例：媽媽、同事小美" maxlength="20" value="${_pf}" oninput="App.onProxyForInput(this)">
+          <div style="font-size:11px;color:var(--t2);margin-top:4px;">會自動帶入上方「支出項目」</div>
+        </div>`;
       return;
     }
     const parts=Array.from(document.querySelectorAll('#in-exp-parts .chip.on')).map(c=>c.id.replace('cp-',''));
@@ -4917,7 +4933,10 @@ const App = {
   saveExpense(andNext=false){
     const category=document.getElementById('in-exp-cat').value;
     const payMethod=document.getElementById('in-exp-pay-method').value;
-    const name=document.getElementById('in-exp-name').value.trim().replace(/-$/,'');
+    const _rawName=document.getElementById('in-exp-name').value.trim().replace(/-$/,'');
+    // 代購(外部成員):支出項目以「代購對象」為準,並另存 proxyFor 供編輯回填
+    const proxyFor=(this.splitMode==='extproxy')?((this._proxyFor||document.getElementById('in-exp-proxyfor')?.value||'').trim()):'';
+    const name=(this.splitMode==='extproxy'&&proxyFor)?proxyFor:_rawName;
     // 交通:出發地/目的地(僅交通類別存,其他類別留 null)
     const routeFrom=category==='交通'?(document.getElementById('in-exp-from')?.value.trim()||''):'';
     const routeTo=category==='交通'?(document.getElementById('in-exp-to')?.value.trim()||''):'';
@@ -4978,7 +4997,7 @@ const App = {
     const date=(dateEl.dataset.start||dateInput.slice(0,10)).slice(0,10);
     const dateEnd=(dateEl.dataset.end||'').slice(0,10);
     if(dateEnd&&dateEnd<date){this.showToast('結束日期不能早於開始日期');return;}
-    const exp={category,payMethod,name,from:routeFrom||null,to:routeTo||null,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
+    const exp={category,payMethod,name,from:routeFrom||null,to:routeTo||null,proxyFor:proxyFor||null,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
     // 編輯時保留原 createdAt:它是「多付一元輪流」的種子與同日排序依據,改掉會讓尾差換人、順序跳動
     if(this.editId){const _old=t.expenses[this.editId];t.expenses[this.editId]={..._old,...exp,createdAt:_old?.createdAt??exp.createdAt};}
     else{t.expenses[uid()]=exp;}
