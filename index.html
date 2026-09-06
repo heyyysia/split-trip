@@ -1546,6 +1546,20 @@ select.input{
       <label class="form-label">支出項目</label>
       <input id="in-exp-name" class="input" placeholder="選擇下方標籤自動帶入 或 自行輸入" maxlength="30" onblur="if(this.value.endsWith('-'))this.value=this.value.slice(0,-1);">
       <div id="cat-suggestions" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;"></div>
+      <!-- 交通專用:出發地 → 目的地(第二行);其他類別隱藏 -->
+      <div id="in-exp-route" style="display:none;margin-top:10px;">
+        <div style="display:flex;align-items:flex-end;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <label class="form-label" style="font-size:12px;color:var(--t2);margin-bottom:4px;">出發地</label>
+            <input id="in-exp-from" class="input" placeholder="例：台北" maxlength="20">
+          </div>
+          <div style="flex-shrink:0;padding-bottom:9px;font-size:18px;color:var(--accent);">→</div>
+          <div style="flex:1;min-width:0;">
+            <label class="form-label" style="font-size:12px;color:var(--t2);margin-bottom:4px;">目的地</label>
+            <input id="in-exp-to" class="input" placeholder="例：桃園" maxlength="20">
+          </div>
+        </div>
+      </div>
     </div>
     <div class="mb3">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -1853,10 +1867,10 @@ const normCat=c=>_VALID_CATS.has(c)?c:'其他';
 const CAT_SUGGESTIONS={
   '餐飲':[['🌅','早餐'],['🍱','中餐'],['🍽️','晚餐'],['☕','咖啡廳'],['🏪','便利超商'],['🛒','超市雜貨'],['🍢','路邊攤'],['🥤','飲料'],['🍺','酒'],['🛵','外送'],['🥖','麵包店'],['🍰','甜點']],
   '住宿':[['','飯店'],['','民宿'],['','airbnb'],['','青年旅館'],['','露營']],
-  '交通':[['','地鐵'],['','火車'],['','公車'],['','計程車'],['✈️','飛機'],['','租汽車'],['','停車費'],['','加油費'],['','過路費'],['','租機車'],['','租腳踏車'],['','租電動滑板車'],['','渡輪'],['','纜車'],['','交通票券'],['','觀光車']],
+  '交通':[['','地鐵'],['','火車'],['','公車'],['','計程車'],['✈️','飛機'],['','租汽車'],['','停車費'],['','加油費'],['','過路費'],['','租機車'],['','租腳踏車'],['','租電動滑板車'],['','渡輪'],['','纜車'],['','交通票券'],['','觀光車'],['','包車']],
   '玩樂':[['','導覽團'],['','遊樂園'],['','動物園'],['','水族館'],['','景點'],['','博物館'],['','展覽'],['','祭典'],['','表演秀'],['','賞鯨團'],['','水上活動'],['','滑雪'],['','SPA按摩'],['','髮廊'],['','溫泉'],['','郵輪'],['','體驗課'],['','電影院'],['','卡拉OK'],['','保齡球'],['','夜店'],['','密室逃脫'],['','網咖'],['','租借費']],
-  '購物':[['','伴手禮'],['','紀念品'],['','代購'],['','美妝'],['','藥妝'],['','3C電器'],['','日用品'],['','服飾'],['','鞋子'],['','配件'],['','運動服飾'],['','玩具'],['','扭蛋'],['','超市']],
-  '其他':[['','保險'],['','簽證'],['','藥局'],['','小費'],['','SIM卡'],['','換匯手續費'],['','行李寄放'],['','置物櫃'],['','洗衣費'],['','行李費'],['','郵票郵資']],
+  '購物':[['','伴手禮'],['','紀念品'],['','代購'],['','美妝'],['','藥妝'],['','3C電器'],['','日用品'],['','服飾'],['','鞋子'],['','配件'],['','運動服飾'],['','玩具'],['','扭蛋'],['','超市'],['','明信片']],
+  '其他':[['','保險'],['','簽證'],['','小費'],['','SIM卡'],['','漫遊'],['','換匯手續費'],['','行李寄放'],['','置物櫃'],['','洗衣費'],['','行李費'],['','郵資'],['','寄送費']],
 };
 
 // ─── STORAGE ─────────────────────────────────────────────────
@@ -2019,6 +2033,12 @@ function expUsesPayMethod(e,pm){
     return Object.entries(e.paidBy).some(([id,v])=>Number(v)>0&&payMethodOfPayer(e,id)===pm);
   }
   return (e?.payMethod||'現金')===pm;
+}
+// 交通支出顯示名稱:接上「出發地→目的地」(其他類別或無填則只顯示項目名)
+function expDisplayName(e){
+  const nm=e?.name||'';
+  if(e&&e.category==='交通'&&(e.from||e.to)) return `${nm} ${e.from||''}→${e.to||''}`.trim();
+  return nm;
 }
 function usesCashRate(payMethod){return (payMethod||'現金')!=='信用卡';}
 function payMethodUsageLabel(payMethod){return payMethodOf({payMethod})+'支出';}
@@ -3016,7 +3036,7 @@ const App = {
         <div style="display:flex;align-items:center;gap:10px;width:100%;">
           <div class="exp-icon">${CAT_ICON[e.category]||'📦'}</div>
           <div class="flex-1 min-w-0">
-            <div class="base bold" style="display:inline-flex;align-items:center;">${e.name}${chevronExp}</div>
+            <div class="base bold" style="display:inline-flex;align-items:center;">${expDisplayName(e)}${chevronExp}</div>
             <div class="xs muted mt1 truncate">${payerName} 付款</div>
             ${e.dateEnd&&!isExpExp?`<div class="xs muted" style="margin-top:2px;">期間 ${this.expenseDateText(e)}</div>`:''}
             ${!isExpExp?`<div class="xs muted" style="margin-top:2px;">${splitLabel} · ${partsLabel}</div>`:''}
@@ -4173,6 +4193,7 @@ const App = {
     document.getElementById('sp-pr').disabled=false;
     document.getElementById('sp-cu').disabled=false;
     this._proportions=null;
+    this.setPayerMode('single');// 預設一人;編輯載入若為多人會在下方覆寫(不可放在 if 之後,否則會蓋掉多人)
     const todayStr=(()=>{const d=new Date();return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;})();
     if(eid){
       const e=t.expenses[eid];
@@ -4185,6 +4206,9 @@ const App = {
 
       document.getElementById('in-exp-cat').value=e.category||'其他';
       document.getElementById('in-exp-name').value=e.name;
+      // 交通:回填出發地/目的地(顯示切換交給 setTimeout 內的 updateCatSuggestions(false))
+      document.getElementById('in-exp-from').value=e.from||'';
+      document.getElementById('in-exp-to').value=e.to||'';
       document.getElementById('in-exp-cur').value=e.currency;
       document.getElementById('in-exp-amt').value=e.amount;this.fmtAmtInput(document.getElementById('in-exp-amt'));
       document.getElementById('in-exp-pay-method').value=e.payMethod||'現金';
@@ -4226,6 +4250,8 @@ const App = {
       dateEl.value=this.dateWithDay(todayStr);
       document.getElementById('in-exp-cat').value='餐飲';
       document.getElementById('in-exp-name').value='';
+      document.getElementById('in-exp-from').value='';
+      document.getElementById('in-exp-to').value='';
       // 預設帶入最近一筆的幣別(連續記帳免選),沒有紀錄則用 TWD
       const _lastExpCur=_expListCur.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0];
       document.getElementById('in-exp-cur').value=(_lastExpCur&&_allExpCurs.includes(_lastExpCur.currency))?_lastExpCur.currency:'TWD';
@@ -4237,7 +4263,6 @@ const App = {
     document.getElementById('split-preview').innerHTML='';
     const _sb=document.getElementById('split-btns');
     if(_sb) _sb.style.display='flex';
-    this.setPayerMode('single');
     document.querySelectorAll('.note-chip').forEach(b=>{b.style.background='#fff';b.style.borderColor='var(--border)';b.style.color='var(--t1)';b.style.fontWeight='400';});
     this.openModal('m-expense');
     setTimeout(()=>{
@@ -4498,6 +4523,12 @@ const App = {
       const nameEl=document.getElementById('in-exp-name');
       if(nameEl) nameEl.value='';
     }
+    // 交通類別才顯示「出發地→目的地」;切離交通就隱藏,clearName 時(換類別)清空避免殘留
+    const routeEl=document.getElementById('in-exp-route');
+    if(routeEl){
+      routeEl.style.display=cat==='交通'?'':'none';
+      if(clearName&&cat!=='交通'){const f=document.getElementById('in-exp-from'),to=document.getElementById('in-exp-to');if(f)f.value='';if(to)to.value='';}
+    }
     const items=CAT_SUGGESTIONS[cat]||[];
     box.innerHTML=items.map(([,name])=>`<button type="button" class="sug-chip" onclick="App.pickSuggestion(this,'${name}')" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;transition:all .15s;">${name}</button>`).join('');
   },
@@ -4721,7 +4752,9 @@ const App = {
       this._dpSelected=null;
     }
     this._dpTarget=targetId;
-    this._dpMode=isExpense&&el?.dataset.end?'range':'single';
+    // 住宿多半跨夜:選住宿類別時日期選擇器預設跳到「期間」模式(已填過結束日一樣維持期間)
+    const _catForDp=isExpense?(document.getElementById('in-exp-cat')?.value||''):'';
+    this._dpMode=isExpense&&(el?.dataset.end||_catForDp==='住宿')?'range':'single';
     this._dpRangeStart=isExpense?(el?.dataset.start||this._dpSelected):null;
     this._dpRangeEnd=isExpense?(el?.dataset.end||null):null;
     const modeWrap=document.getElementById('dp-mode-wrap');
@@ -4885,6 +4918,9 @@ const App = {
     const category=document.getElementById('in-exp-cat').value;
     const payMethod=document.getElementById('in-exp-pay-method').value;
     const name=document.getElementById('in-exp-name').value.trim().replace(/-$/,'');
+    // 交通:出發地/目的地(僅交通類別存,其他類別留 null)
+    const routeFrom=category==='交通'?(document.getElementById('in-exp-from')?.value.trim()||''):'';
+    const routeTo=category==='交通'?(document.getElementById('in-exp-to')?.value.trim()||''):'';
     const rawAmount=parseFloat(document.getElementById('in-exp-amt').value.replace(/,/g,''));
     const currency=document.getElementById('in-exp-cur').value;
     let note=document.getElementById('in-exp-note')?.value.trim()||'';
@@ -4942,7 +4978,7 @@ const App = {
     const date=(dateEl.dataset.start||dateInput.slice(0,10)).slice(0,10);
     const dateEnd=(dateEl.dataset.end||'').slice(0,10);
     if(dateEnd&&dateEnd<date){this.showToast('結束日期不能早於開始日期');return;}
-    const exp={category,payMethod,name,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
+    const exp={category,payMethod,name,from:routeFrom||null,to:routeTo||null,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
     // 編輯時保留原 createdAt:它是「多付一元輪流」的種子與同日排序依據,改掉會讓尾差換人、順序跳動
     if(this.editId){const _old=t.expenses[this.editId];t.expenses[this.editId]={..._old,...exp,createdAt:_old?.createdAt??exp.createdAt};}
     else{t.expenses[uid()]=exp;}
@@ -5767,7 +5803,7 @@ const App = {
       return `<tr>
         <td style="${tdS}">${this.expenseDateText(e)||'—'}</td>
         <td style="${tdS}">${e.category||'其他'}</td>
-        <td style="${tdS}font-weight:600;">${e.name}</td>
+        <td style="${tdS}font-weight:600;">${expDisplayName(e)}</td>
         ${curCells}
         <td style="${tdS}border-left:2.5px solid #9CA3AF;text-align:center;">${payMethodLabel(e)}</td>
         <td style="${tdS}text-align:center;">${payer}</td>
@@ -6214,7 +6250,7 @@ const App = {
             fundCells=[parseFloat(_omrAmt.toFixed(3)),fundAmt];
           } else {fundCells=['',''];}
         }
-        const row=[this.expenseDateText(e),e.category||'其他',e.name,...curCells,payMethodLabel(e),payer,splitModeLabel,ps.length,isPending?'待補':baseTotalNum,isPending?'':unitPrice,...regularMemberCells,...fundCells];
+        const row=[this.expenseDateText(e),e.category||'其他',expDisplayName(e),...curCells,payMethodLabel(e),payer,splitModeLabel,ps.length,isPending?'待補':baseTotalNum,isPending?'':unitPrice,...regularMemberCells,...fundCells];
         csv+=row.map(esc).join(',')+'\n';
       });
     };
@@ -6546,6 +6582,20 @@ function runSelfTest(){
     ok('中繼換算:現金/電子錢包換匯成本、信用卡一般、無紀錄回退、當時匯率保留',s3.baseTotal===Math.round(12.5*_fxRate)&&s3Card.baseTotal===Math.round(12.5*85.5)&&s3Fallback.baseTotal===s3Card.baseTotal&&s3Wallet.baseTotal===s3.baseTotal&&_walletUsage?.usage==='電子錢包支出'&&_walletUsage?.source==='平均換匯成本'&&cashRateTwd(t1,'USD')===32&&Object.values(s3.shares).reduce((a,b)=>a+b,0)===s3.baseTotal&&_snapshotStillSame);
     const w=ts=>{const s=calcExp({amount:100,currency:'TWD',paidBy:'A',parts:['A','B','C'],splitMode:'equal',createdAt:ts},t0).shares;return Object.entries(s).find(([,v])=>v===34)[0];};
     ok('尾差輪流分配(逐筆換人)',new Set([w(10),w(11),w(12)]).size>1);
+    // 多人各自支付方式(2026-09-06):每人用自己方式換匯,baseTotal=逐人加總,分攤/實付與總額軋平,且確實不同於全現金
+    const sMix=calcExp({amount:24,currency:'OMR',paidBy:{A:12,B:12},payMethods:{A:'現金',B:'信用卡'},parts:['A','B','C'],splitMode:'equal',createdAt:9},t1);
+    const sAllCash=calcExp({amount:24,currency:'OMR',paidBy:{A:12,B:12},payMethods:{A:'現金',B:'現金'},parts:['A','B','C'],splitMode:'equal',createdAt:9},t1);
+    ok('多人各自支付方式:逐人換匯加總＝總額、分攤/實付軋平',
+      sMix.baseTotal===Math.round(12*_fxRate+12*85.5)
+      &&Object.values(sMix.paid).reduce((a,b)=>a+b,0)===sMix.baseTotal
+      &&Object.values(sMix.shares).reduce((a,b)=>a+b,0)===sMix.baseTotal
+      &&sAllCash.baseTotal===Math.round(24*_fxRate)&&sMix.baseTotal>sAllCash.baseTotal);
+    const _mixE={paidBy:{A:12,B:12},payMethods:{A:'現金',B:'信用卡'}};
+    const _sameE={paidBy:{A:12,B:12},payMethods:{A:'現金',B:'現金'}};
+    ok('多人各自支付方式:顯示「混合」與篩選判斷正確',
+      payMethodLabel(_mixE)==='混合'&&payMethodLabel(_sameE)==='現金'
+      &&expUsesPayMethod(_mixE,'信用卡')===true&&expUsesPayMethod(_mixE,'電子錢包')===false
+      &&payMethodLabel({payMethod:'信用卡',paidBy:'A'})==='信用卡');
     const fx={id:'__st',name:'驗收',baseCurrency:'TWD',rates:{OMR:85.5},payRecords:[],
       fxExchanges:[{id:'fx1',date:'2026/01/01',fromCurrency:'USD',fromAmount:100,toCurrency:'OMR',toAmount:38.4,sourceRateTwd:32,createdAt:1}],
       fundDeposits:[{fromMemberId:'A',amt:200,cur:'TWD'},{fromMemberId:'B',amt:200,cur:'TWD'}],
