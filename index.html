@@ -4235,7 +4235,12 @@ const App = {
         t.members.forEach(m=>document.getElementById(`cp-${m.id}`)?.classList.remove('on'));
         document.getElementById('cp-none')?.classList.remove('on');
         document.getElementById('cp-extproxy')?.classList.add('on');
-        this._proxyFor=e.proxyFor||e.name||'';// 回填代購對象(舊資料無此欄則用項目名)
+        this._proxyFor=e.proxyFor||'';// 回填代購對象(舊資料無此欄則留空)
+        // 支出項目欄還原成不含（代購對象）的原始項目,避免再存檔時重複疊加
+        const _nmEl=document.getElementById('in-exp-name');
+        if(_nmEl&&e.proxyFor&&(e.name||'').endsWith(`（${e.proxyFor}）`)){
+          _nmEl.value=e.name.slice(0,-(e.proxyFor.length+2));
+        }
         const sb=document.getElementById('split-btns');
         if(sb) sb.style.display='none';
       } else if(this.splitMode==='proportion'){
@@ -4349,9 +4354,16 @@ const App = {
   },
 
   onProxyForInput(el){
+    if(!el) return;
     this._proxyFor=el.value;
-    const nameEl=document.getElementById('in-exp-name');
-    if(nameEl) nameEl.value=el.value;// 代購對象即時帶入上方「支出項目」
+    // 不覆蓋支出項目,只在下方預覽存檔後會長怎樣:項目（代購對象）
+    const base=(document.getElementById('in-exp-name')?.value||'').trim();
+    const prev=document.getElementById('proxy-name-preview');
+    if(prev){
+      prev.textContent=el.value
+        ?`支出項目將存為：${base?`${base}（${el.value}）`:`（${el.value}）`}`
+        :'存檔時會接在上方「支出項目」後面：項目（代購對象）';
+    }
   },
   toggleExtProxy(){
     const extBtn=document.getElementById('cp-extproxy');
@@ -4359,8 +4371,8 @@ const App = {
     document.querySelectorAll('#in-exp-parts .chip').forEach(c=>{if(c.id!=='cp-extproxy') c.classList.remove('on');});
     extBtn?.classList.toggle('on',turning);
     this.splitMode=turning?'extproxy':'equal';
-    // 開啟代購:用目前已填的支出項目當代購對象種子;關閉:清空
-    this._proxyFor=turning?(document.getElementById('in-exp-name')?.value||''):'';
+    // 代購對象不預設帶項目名(避免蓋掉),一律從空白開始;關閉也清空
+    this._proxyFor='';
     const splitBtns=document.getElementById('split-btns');
     if(splitBtns) splitBtns.style.display=turning?'none':'flex';
     if(!turning){
@@ -4429,14 +4441,15 @@ const App = {
       return;
     }
     if(this.splitMode==='extproxy'){
-      // 代購對象輸入框:內容即時帶入上方「支出項目」。用 this._proxyFor 記住,避免金額變動重繪時被清空
+      // 代購對象:不覆蓋支出項目,存檔時接在項目後面成「項目（代購對象）」。用 this._proxyFor 記住,避免重繪被清空
       const _pf=this._esc?this._esc(this._proxyFor||''):(this._proxyFor||'');
       box.innerHTML=`<div style="background:#EEF0FF;border-radius:12px;padding:10px 14px;font-size:13px;color:var(--accent);font-weight:600;">✓ 代購（外部成員）— 僅記錄採購，不計入分帳</div>
         <div style="margin-top:10px;">
           <label class="form-label" style="font-size:12px;color:var(--t2);margin-bottom:4px;">代購對象</label>
           <input id="in-exp-proxyfor" class="input" placeholder="幫誰買的？例：媽媽、同事小美" maxlength="20" value="${_pf}" oninput="App.onProxyForInput(this)">
-          <div style="font-size:11px;color:var(--t2);margin-top:4px;">會自動帶入上方「支出項目」</div>
+          <div id="proxy-name-preview" style="font-size:11px;color:var(--t2);margin-top:4px;">存檔時會接在上方「支出項目」後面：項目（代購對象）</div>
         </div>`;
+      this.onProxyForInput(document.getElementById('in-exp-proxyfor'));
       return;
     }
     const parts=Array.from(document.querySelectorAll('#in-exp-parts .chip.on')).map(c=>c.id.replace('cp-',''));
@@ -4936,7 +4949,8 @@ const App = {
     const _rawName=document.getElementById('in-exp-name').value.trim().replace(/-$/,'');
     // 代購(外部成員):支出項目以「代購對象」為準,並另存 proxyFor 供編輯回填
     const proxyFor=(this.splitMode==='extproxy')?((this._proxyFor||document.getElementById('in-exp-proxyfor')?.value||'').trim()):'';
-    const name=(this.splitMode==='extproxy'&&proxyFor)?proxyFor:_rawName;
+    // 代購:支出項目後面接（代購對象），不覆蓋原本項目名
+    const name=(this.splitMode==='extproxy'&&proxyFor)?(_rawName?`${_rawName}（${proxyFor}）`:proxyFor):_rawName;
     // 交通:出發地/目的地(僅交通類別存,其他類別留 null)
     const routeFrom=category==='交通'?(document.getElementById('in-exp-from')?.value.trim()||''):'';
     const routeTo=category==='交通'?(document.getElementById('in-exp-to')?.value.trim()||''):'';
