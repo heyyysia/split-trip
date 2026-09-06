@@ -2030,10 +2030,20 @@ const PAY_METHODS=['現金','信用卡','電子錢包'];
 function payMethodOf(e){return e?.payMethod||'現金';}
 // 多人各自方式:取某付款人的支付方式(無 payMethods 時回退整筆 payMethod)
 function payMethodOfPayer(e,id){return (e&&e.payMethods&&e.payMethods[id])||e?.payMethod||'現金';}
-// 一筆支出實際用到的支付方式清單(唯一判斷點,涵蓋三種:單一、多人各自、一人拆兩段)
+// 某付款人的付款分段 [{method,amt}]:有 paySplitBy(拆多段)用之,否則單段(該人總額+其方式)
+function payerSegments(e,id){
+  if(e&&e.paySplitBy&&Array.isArray(e.paySplitBy[id])&&e.paySplitBy[id].length){
+    const segs=e.paySplitBy[id].filter(s=>Number(s.amt)>0);
+    if(segs.length) return segs.map(s=>({method:s.method||'現金',amt:Number(s.amt)||0}));
+  }
+  return [{method:payMethodOfPayer(e,id),amt:Number(e.paidBy&&e.paidBy[id])||0}];
+}
+// 一筆支出實際用到的支付方式清單(唯一判斷點,涵蓋:單一、多人各自、多人各拆、一人拆兩段)
 function expMethodsUsed(e){
-  if(e&&e.payMethods&&typeof e.paidBy==='object'&&e.paidBy){
-    return [...new Set(Object.entries(e.paidBy).filter(([,v])=>Number(v)>0).map(([id])=>payMethodOfPayer(e,id)))];
+  if(e&&typeof e.paidBy==='object'&&e.paidBy&&(e.payMethods||e.paySplitBy)){
+    const set=new Set();
+    Object.entries(e.paidBy).forEach(([id,v])=>{if(Number(v)>0)payerSegments(e,id).forEach(s=>{if(Number(s.amt)>0)set.add(s.method);});});
+    return [...set];
   }
   if(e&&Array.isArray(e.payMethodSplit)&&e.payMethodSplit.length){
     const ms=[...new Set(e.payMethodSplit.filter(s=>Number(s.amt)>0).map(s=>s.method||'現金'))];
@@ -2165,14 +2175,15 @@ function calcExp(e,t){
   const base=t.baseCurrency||'TWD';
   const cur=e.currency||base;
   const pending=e.note==='金額待補';
-  // 多人各自支付方式(2026-09-06 起):paidBy 為物件且有 payMethods 時,每人用自己的方式換匯
-  const mixedPay=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy;
-  const pmOf=id=>(e.payMethods&&e.payMethods[id])||e.payMethod;
+  // 多人各自支付方式:paidBy 為物件且有 payMethods 或 paySplitBy 時,每人(可再拆多段)用各自方式換匯
+  const mixedPay=(e.payMethods||e.paySplitBy)&&typeof e.paidBy==='object'&&e.paidBy;
+  // 某付款人換成基準幣的金額(逐段各自方式)
+  const _payerBase=id=>payerSegments(e,id).reduce((s,seg)=>Number(seg.amt)>0?s+expenseToBase(seg.amt,{...e,payMethod:seg.method||'現金'},t):s,0);
   // 一人拆兩種支付方式:paidBy 為字串且有 payMethodSplit 時,每段用自己的方式換匯
   const splitPay=Array.isArray(e.payMethodSplit)&&e.payMethodSplit.length&&typeof e.paidBy==='string';
   const baseTotal=pending?0:Math.round(
     mixedPay
-      ? Object.entries(e.paidBy).reduce((s,[id,v])=>Number(v)>0?s+expenseToBase(v,{...e,payMethod:pmOf(id)},t):s,0)
+      ? Object.keys(e.paidBy).reduce((s,id)=>Number(e.paidBy[id])>0?s+_payerBase(id):s,0)
       : splitPay
         ? e.payMethodSplit.reduce((s,seg)=>Number(seg.amt)>0?s+expenseToBase(seg.amt,{...e,payMethod:seg.method||'現金'},t):s,0)
         : expenseToBase(e.amount,e,t)
@@ -2195,7 +2206,7 @@ function calcExp(e,t){
   let paid={};
   if(!pending&&baseTotal!==0){
     if(typeof e.paidBy==='object'&&e.paidBy){
-      const rawP={};Object.entries(e.paidBy).forEach(([id,v])=>{if(v>0)rawP[id]=expenseToBase(v,mixedPay?{...e,payMethod:pmOf(id)}:e,t);});
+      const rawP={};Object.entries(e.paidBy).forEach(([id,v])=>{if(v>0)rawP[id]=mixedPay?_payerBase(id):expenseToBase(v,e,t);});
       paid=lrmRound(rawP,baseTotal);
     }else if(e.paidBy){paid={[e.paidBy]:baseTotal};}
   }
@@ -3003,9 +3014,11 @@ const App = {
       const chevronExp=`<svg width="12" height="12" viewBox="0 0 10 10" style="margin-left:4px;vertical-align:middle;flex-shrink:0;transition:transform .2s;transform:${isExpExp?'rotate(180deg)':'rotate(0deg)'}"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
       let expandedDetail='';
       if(isExpExp){
-        const _mixedCard=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy!==null;
+        const _mixedCard=(e.payMethods||e.paySplitBy)&&typeof e.paidBy==='object'&&e.paidBy!==null;
         const payerLabel=typeof e.paidBy==='object'&&e.paidBy!==null
-          ?Object.entries(e.paidBy).map(([pid,amt])=>{const m=t.members.find(m=>m.id===pid);return `${m?.name||'?'} ${symFmt(fmtNum(amt))}${_mixedCard?`（${payMethodOfPayer(e,pid)}）`:''}`;}).join('、')
+          ?Object.entries(e.paidBy).map(([pid,amt])=>{const m=t.members.find(m=>m.id===pid);const nm=m?.name||'?';
+            if(_mixedCard){const segs=payerSegments(e,pid).filter(s=>Number(s.amt)>0);if(segs.length>1)return `${nm} ${segs.map(s=>`${s.method} ${symFmt(fmtNum(s.amt))}`).join('＋')}`;return `${nm} ${symFmt(fmtNum(amt))}（${segs[0]?.method||payMethodOfPayer(e,pid)}）`;}
+            return `${nm} ${symFmt(fmtNum(amt))}`;}).join('、')
           :(t.members.find(m=>m.id===e.paidBy)?.name||'?');
         const splitLabelFull=e.splitMode==='self'?'自購':e.splitMode==='custom'?'自訂金額':e.splitMode==='proportion'?'按比例':'平均分攤';
         let partsLabelDetail;
@@ -4208,6 +4221,7 @@ const App = {
     this._proxyFor='';// 代購對象預設清空;編輯 extproxy 會在下方回填
     this._isDelivery=false;// 外送預設關;編輯若為餐飲外送會在下方回填
     this._paySplit=false;// 拆兩段支付預設關;編輯若有 payMethodSplit 會在下方回填
+    this._mpSplit={};// 多人各人拆段狀態預設清空;編輯若有 paySplitBy 會在下方回填
     this.setPayerMode('single');// 預設一人;編輯載入若為多人會在下方覆寫(不可放在 if 之後,否則會蓋掉多人)
     const todayStr=(()=>{const d=new Date();return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;})();
     if(eid){
@@ -4230,7 +4244,7 @@ const App = {
       document.getElementById('in-exp-pay-method').value=e.payMethod||'現金';
       if(typeof e.paidBy==='object'&&e.paidBy!==null){
         this.setPayerMode('multi');
-        this.renderMultiPayerList(e.paidBy,e.payMethods||null);
+        this.renderMultiPayerList(e.paidBy,e.payMethods||null,e.paySplitBy||null);
       } else {
         // 一人拆兩段支付:先設好狀態,再進單人模式(setPayerMode('single')會依 _paySplit 套用 UI 與回填)
         this._paySplit=Array.isArray(e.payMethodSplit)&&e.payMethodSplit.length>0;
@@ -4688,31 +4702,79 @@ const App = {
       this._applyPaySplitUI();
     }
   },
-  renderMultiPayerList(prefill=null,prefillMethods=null){
+  renderMultiPayerList(prefill=null,prefillMethods=null,prefillSplit=null){
     const t=loadTrip(this.tripId);
     if(!t) return;
     const box=document.getElementById('payer-multi');
     if(!box) return;
     const cur=document.getElementById('in-exp-cur')?.value||'TWD';
     const sym=C[cur]?.sym||(cur+' ');
-    // 每列預設帶入切換前選的共用支付方式(回退現金);編輯既有支出則用該筆各人紀錄
     const defPm=document.getElementById('in-exp-pay-method')?.value||'現金';
-    const box2=`<div style="background:var(--surface);border-radius:12px;padding:12px;border:1px solid var(--border);">`+
-      t.members.map(m=>{
-        const rowPm=(prefillMethods&&prefillMethods[m.id])||defPm;
-        return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-        <span style="font-size:13px;font-weight:600;width:48px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.name.slice(0,5)}</span>
-        <span style="font-size:13px;flex-shrink:0;">${sym}</span>
-        <input type="text" inputmode="decimal" id="mp-${m.id}" class="input" style="flex:1;min-width:0;height:38px;font-size:14px;text-align:right;" placeholder="0"
-          value="${prefill&&prefill[m.id]?prefill[m.id]:''}" oninput="App.fmtAmtInput(this);App.updateMultiPayerHint()">
-        <select id="mpm-${m.id}" class="input" style="width:82px;flex-shrink:0;height:38px;font-size:12px;padding:0 4px;" onchange="App.updateMultiPayerHint()">
-          ${PAY_METHODS.map(pm=>`<option value="${pm}"${pm===rowPm?' selected':''}>${pm}</option>`).join('')}
-        </select>
-      </div>`;}).join('')+
-      `<div id="multi-payer-hint" style="font-size:12px;color:var(--t2);margin-top:4px;text-align:right;"></div></div>`;
-    box.innerHTML=box2;
-    if(prefill) box.querySelectorAll('input[type="text"]').forEach(el=>this.fmtAmtInput(el));
+    if(!this._mpSplit) this._mpSplit={};
+    // 有 prefillSplit(編輯載入或切換重繪)→ 據以決定哪些人是拆多段
+    if(prefillSplit){this._mpSplit={};Object.keys(prefillSplit).forEach(id=>{if(prefillSplit[id]&&prefillSplit[id].length>1)this._mpSplit[id]=true;});}
+    const opts=sel=>PAY_METHODS.map(pm=>`<option value="${pm}"${pm===sel?' selected':''}>${pm}</option>`).join('');
+    const rowsHtml=t.members.map(m=>{
+      const seg=prefillSplit&&prefillSplit[m.id];
+      const amt1=seg?(seg[0]?.amt??''):(prefill&&prefill[m.id]!=null?prefill[m.id]:'');
+      const pm1=seg?(seg[0]?.method||defPm):((prefillMethods&&prefillMethods[m.id])||defPm);
+      const split=!!this._mpSplit[m.id];
+      const amt2=split&&seg&&seg[1]?(seg[1].amt??''):'';
+      const pm2=split&&seg&&seg[1]?(seg[1].method||'現金'):(pm1==='現金'?'電子錢包':'現金');
+      return `<div style="margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;font-weight:600;width:44px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.name.slice(0,5)}</span>
+          <span style="font-size:13px;flex-shrink:0;">${sym}</span>
+          <input type="text" inputmode="decimal" id="mp-${m.id}" class="input" style="flex:1;min-width:0;height:38px;font-size:14px;text-align:right;" placeholder="0" value="${amt1!=null?amt1:''}" oninput="App.fmtAmtInput(this);App.updateMultiPayerHint()">
+          <select id="mpm-${m.id}" class="input" style="width:72px;flex-shrink:0;height:38px;font-size:12px;padding:0 4px;" onchange="App.updateMultiPayerHint()">${opts(pm1)}</select>
+          <button type="button" onclick="App.toggleMpSplit('${m.id}')" title="${split?'移除第二種支付':'加第二種支付'}" style="flex-shrink:0;width:28px;height:38px;border-radius:8px;border:1.5px solid ${split?'var(--accent)':'var(--border)'};background:#fff;color:var(--accent);font-size:15px;font-weight:700;cursor:pointer;line-height:1;">${split?'−':'＋'}</button>
+        </div>
+        ${split?`<div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-left:50px;">
+          <span style="font-size:13px;flex-shrink:0;">${sym}</span>
+          <input type="text" inputmode="decimal" id="mp2-${m.id}" class="input" style="flex:1;min-width:0;height:38px;font-size:14px;text-align:right;" placeholder="0" value="${amt2!=null?amt2:''}" oninput="App.fmtAmtInput(this);App.updateMultiPayerHint()">
+          <select id="mpm2-${m.id}" class="input" style="width:72px;flex-shrink:0;height:38px;font-size:12px;padding:0 4px;" onchange="App.updateMultiPayerHint()">${opts(pm2)}</select>
+          <span style="flex-shrink:0;width:28px;"></span>
+        </div>`:''}
+      </div>`;
+    }).join('');
+    box.innerHTML=`<div style="background:var(--surface);border-radius:12px;padding:12px;border:1px solid var(--border);">${rowsHtml}<div id="multi-payer-hint" style="font-size:12px;color:var(--t2);margin-top:4px;text-align:right;"></div></div>`;
+    box.querySelectorAll('input[type="text"]').forEach(el=>this.fmtAmtInput(el));
     this.updateMultiPayerHint();
+  },
+  // 蒐集目前多人清單各欄位(依現有 _mpSplit 讀對的欄位),供切換/重繪時保留
+  _gatherMultiState(){
+    const t=loadTrip(this.tripId);
+    const prefill={},prefillMethods={},prefillSplit={};
+    (t?.members||[]).forEach(m=>{
+      const a1=document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'';
+      const pm1=document.getElementById(`mpm-${m.id}`)?.value||'現金';
+      if(this._mpSplit&&this._mpSplit[m.id]){
+        const a2=document.getElementById(`mp2-${m.id}`)?.value.replace(/,/g,'')||'';
+        const pm2=document.getElementById(`mpm2-${m.id}`)?.value||'現金';
+        prefillSplit[m.id]=[{method:pm1,amt:a1},{method:pm2,amt:a2}];
+      }else{
+        if(a1) prefill[m.id]=a1;
+        prefillMethods[m.id]=pm1;
+      }
+    });
+    return {prefill,prefillMethods,prefillSplit};
+  },
+  toggleMpSplit(id){
+    if(!this._mpSplit) this._mpSplit={};
+    const s=this._gatherMultiState();
+    if(this._mpSplit[id]){
+      // 收起第二段:保留第一段金額與方式
+      const seg=s.prefillSplit[id];
+      if(seg){if(seg[0].amt)s.prefill[id]=seg[0].amt;s.prefillMethods[id]=seg[0].method;delete s.prefillSplit[id];}
+      delete this._mpSplit[id];
+    }else{
+      // 展開第二段:第一段沿用原本金額/方式,第二段留空
+      const a1=s.prefill[id]||'';const pm1=s.prefillMethods[id]||'現金';
+      s.prefillSplit[id]=[{method:pm1,amt:a1},{method:pm1==='現金'?'電子錢包':'現金',amt:''}];
+      delete s.prefill[id];delete s.prefillMethods[id];
+      this._mpSplit[id]=true;
+    }
+    this.renderMultiPayerList(s.prefill,s.prefillMethods,s.prefillSplit);
   },
   updateMultiPayerHint(){
     const t=loadTrip(this.tripId);
@@ -4721,8 +4783,8 @@ const App = {
     const sym=C[cur]?.sym||(cur+' ');
     let total=0;
     t.members.forEach(m=>{
-      const v=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;
-      total+=v;
+      total+=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;
+      if(this._mpSplit&&this._mpSplit[m.id]) total+=parseFloat(document.getElementById(`mp2-${m.id}`)?.value.replace(/,/g,'')||'0')||0;
     });
     // 多人模式:金額欄自動＝各付款人合計(唯讀),並帶動下方分攤與匯率預覽;
     // 合計為 0 時(例如剛切到多人、還沒填)不覆蓋金額欄,避免清掉使用者原本輸入
@@ -4743,9 +4805,10 @@ const App = {
     if(cur===base) return 1;
     if(this._payerMode==='multi'){
       let amtTot=0,baseTot=0;
+      const seg=(elA,elM)=>{const v=parseFloat(elA?.value.replace(/,/g,'')||'0')||0;if(v>0){const pm=elM?.value||'現金';amtTot+=v;baseTot+=expenseToBase(v,{currency:cur,payMethod:pm},t);}};
       (t.members||[]).forEach(m=>{
-        const v=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;
-        if(v>0){const pm=document.getElementById(`mpm-${m.id}`)?.value||'現金';amtTot+=v;baseTot+=expenseToBase(v,{currency:cur,payMethod:pm},t);}
+        seg(document.getElementById(`mp-${m.id}`),document.getElementById(`mpm-${m.id}`));
+        if(this._mpSplit&&this._mpSplit[m.id]) seg(document.getElementById(`mp2-${m.id}`),document.getElementById(`mpm2-${m.id}`));
       });
       if(amtTot>0) return baseTot/amtTot;
       return expenseToBase(1,{currency:cur,payMethod:'現金'},t);
@@ -5025,15 +5088,13 @@ const App = {
   onCurrencyChange(){
     // 多人模式:改幣別時保留已填金額與方式重繪,讓每列幣別符號同步更新(否則列上符號會停在舊幣別)
     if(this._payerMode==='multi'){
-      const t=loadTrip(this.tripId);
-      const prefill={},prefillM={};
-      (t?.members||[]).forEach(m=>{
-        const v=document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'');
-        if(v) prefill[m.id]=v;
-        const pm=document.getElementById(`mpm-${m.id}`)?.value;
-        if(pm) prefillM[m.id]=pm;
-      });
-      this.renderMultiPayerList(prefill,prefillM);
+      const s=this._gatherMultiState();
+      this.renderMultiPayerList(s.prefill,s.prefillMethods,s.prefillSplit);
+    }
+    // 一人拆兩段:同理,保留兩段內容重繪讓幣別符號更新
+    if(this._paySplit){
+      const segs=[0,1].map(i=>({method:document.getElementById(`psm-${i}`)?.value||'現金',amt:document.getElementById(`psa-${i}`)?.value.replace(/,/g,'')||''}));
+      this.renderPaySplitRows(segs);
     }
     this.previewTWD();
   },
@@ -5050,7 +5111,10 @@ const App = {
       const mul=this._previewRateMul(cur,t);
       const inBase=amt*mul;
       const methods=new Set();
-      if(this._payerMode==='multi'){(t?.members||[]).forEach(m=>{if(parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')>0)methods.add(document.getElementById(`mpm-${m.id}`)?.value||'現金');});}
+      if(this._payerMode==='multi'){(t?.members||[]).forEach(m=>{
+        if(parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')>0)methods.add(document.getElementById(`mpm-${m.id}`)?.value||'現金');
+        if(this._mpSplit&&this._mpSplit[m.id]&&parseFloat(document.getElementById(`mp2-${m.id}`)?.value.replace(/,/g,'')||'0')>0)methods.add(document.getElementById(`mpm2-${m.id}`)?.value||'現金');
+      });}
       else{[0,1].forEach(i=>{if(parseFloat(document.getElementById(`psa-${i}`)?.value.replace(/,/g,'')||'0')>0)methods.add(document.getElementById(`psm-${i}`)?.value||'現金');});}
       const bSym=(C[base]||C.TWD).sym;
       const srcLabel=methods.size>1?'混合換匯':expenseRateInfo({currency:cur,payMethod:[...methods][0]||'現金'},t).source;
@@ -5089,13 +5153,25 @@ const App = {
     const amount=isPending?0:rawAmount;
     if(!name){this.showToast('請輸入支出項目');return;}
     if(!isPending&&(!amount||isNaN(amount)||amount<=0)){this.showToast('請輸入有效金額，或備註填入「金額待補」');return;}
-    let paidBy,payMethods=null,payMethodSplit=null;
+    let paidBy,payMethods=null,payMethodSplit=null,paySplitBy=null;
     if(this._payerMode==='multi'){
       const _t=loadTrip(this.tripId);
-      paidBy={};let _payTot=0;payMethods={};
-      _t.members.forEach(m=>{const v=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;if(v>0){paidBy[m.id]=v;_payTot+=v;payMethods[m.id]=document.getElementById(`mpm-${m.id}`)?.value||'現金';}});
+      paidBy={};let _payTot=0;payMethods={};paySplitBy={};
+      _t.members.forEach(m=>{
+        const a1=parseFloat(document.getElementById(`mp-${m.id}`)?.value.replace(/,/g,'')||'0')||0;
+        const pm1=document.getElementById(`mpm-${m.id}`)?.value||'現金';
+        const isSplit=this._mpSplit&&this._mpSplit[m.id];
+        const a2=isSplit?(parseFloat(document.getElementById(`mp2-${m.id}`)?.value.replace(/,/g,'')||'0')||0):0;
+        const pm2=isSplit?(document.getElementById(`mpm2-${m.id}`)?.value||'現金'):null;
+        const tot=a1+a2;
+        if(tot>0){
+          paidBy[m.id]=tot;_payTot+=tot;payMethods[m.id]=pm1;
+          if(isSplit&&a2>0){const segs=[{method:pm1,amt:a1},{method:pm2,amt:a2}].filter(s=>s.amt>0);if(segs.length>1)paySplitBy[m.id]=segs;}
+        }
+      });
       if(!Object.keys(paidBy).length){this.showToast('請輸入付款金額');return;}
       if(!isPending&&Math.abs(_payTot-amount)>0.5){this.showToast(`付款合計 ${_payTot.toLocaleString()} ≠ 支出金額 ${amount.toLocaleString()}`);return;}
+      if(!Object.keys(paySplitBy).length) paySplitBy=null;
     } else {
       paidBy=document.getElementById('in-exp-paid').value;
       // 一人拆兩種支付方式:收集兩段(金額>0),存 payMethodSplit;金額欄已自動＝相加
@@ -5148,7 +5224,7 @@ const App = {
     if(dateEnd&&dateEnd<date){this.showToast('結束日期不能早於開始日期');return;}
     // 拆兩段時,整筆 payMethod 以第一段為準(供回退/舊邏輯);payMethodSplit 保留各段
     const _payMethodFinal=(payMethodSplit&&payMethodSplit.length)?payMethodSplit[0].method:payMethod;
-    const exp={category,payMethod:_payMethodFinal,name,from:routeFrom||null,to:routeTo||null,proxyFor:proxyFor||null,isDelivery:isDelivery||null,payMethodSplit:payMethodSplit||null,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
+    const exp={category,payMethod:_payMethodFinal,name,from:routeFrom||null,to:routeTo||null,proxyFor:proxyFor||null,isDelivery:isDelivery||null,payMethodSplit:payMethodSplit||null,paySplitBy:paySplitBy||null,amount:isPending?0:amount,currency,paidBy,payMethods,parts,splitMode:this.splitMode,customAmounts,proportions,note,date,dateEnd:dateEnd&&dateEnd!==date?dateEnd:null,createdAt:Date.now()};
     // 編輯時保留原 createdAt:它是「多付一元輪流」的種子與同日排序依據,改掉會讓尾差換人、順序跳動
     if(this.editId){const _old=t.expenses[this.editId];t.expenses[this.editId]={..._old,...exp,createdAt:_old?.createdAt??exp.createdAt};}
     else{t.expenses[uid()]=exp;}
@@ -5930,9 +6006,9 @@ const App = {
       const expCur=e.currency||baseCur;
       const isPending=e.note==='金額待補';
       const ps=e.parts||members.map(m=>m.id);
-      const _mixPayPdf=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy;
+      const _mixPayPdf=(e.payMethods||e.paySplitBy)&&typeof e.paidBy==='object'&&e.paidBy;
       const payer=typeof e.paidBy==='object'
-        ? Object.entries(e.paidBy).filter(([,amt])=>amt>0).map(([pid,amt])=>`${members.find(m=>m.id===pid)?.name||'?'}(${Number(amt).toLocaleString()}${_mixPayPdf?'·'+payMethodOfPayer(e,pid):''})`).join('<br>')
+        ? Object.entries(e.paidBy).filter(([,amt])=>amt>0).map(([pid,amt])=>{const nm=members.find(m=>m.id===pid)?.name||'?';if(!_mixPayPdf)return `${nm}(${Number(amt).toLocaleString()})`;const segs=payerSegments(e,pid).filter(s=>Number(s.amt)>0);if(segs.length>1)return `${nm}(${segs.map(s=>`${Number(s.amt).toLocaleString()}·${s.method}`).join(' ')})`;return `${nm}(${Number(amt).toLocaleString()}·${segs[0]?.method||payMethodOfPayer(e,pid)})`;}).join('<br>')
         : (members.find(m=>m.id===e.paidBy)?.name||'?');
       const _c=ENG.perExp[e._k]||calcExp(e,t);// 引擎結果:整數總額/分攤/實付
       const baseTotalNum=_c.baseTotal;
@@ -6388,9 +6464,9 @@ const App = {
         const expCur=e.currency||baseCur;
         const isPending=e.note==='金額待補';
         const ps=e.parts||members.map(m=>m.id);
-        const _mixPayCsv=e.payMethods&&typeof e.paidBy==='object'&&e.paidBy;
+        const _mixPayCsv=(e.payMethods||e.paySplitBy)&&typeof e.paidBy==='object'&&e.paidBy;
         const payer=typeof e.paidBy==='object'
-          ? Object.entries(e.paidBy).filter(([,amt])=>amt>0).map(([pid,amt])=>`${members.find(m=>m.id===pid)?.name||'?'}(${Number(amt).toLocaleString()}${_mixPayCsv?'·'+payMethodOfPayer(e,pid):''})`).join(' + ')
+          ? Object.entries(e.paidBy).filter(([,amt])=>amt>0).map(([pid,amt])=>{const nm=members.find(m=>m.id===pid)?.name||'?';if(!_mixPayCsv)return `${nm}(${Number(amt).toLocaleString()})`;const segs=payerSegments(e,pid).filter(s=>Number(s.amt)>0);if(segs.length>1)return `${nm}(${segs.map(s=>`${Number(s.amt).toLocaleString()}·${s.method}`).join(' ')})`;return `${nm}(${Number(amt).toLocaleString()}·${segs[0]?.method||payMethodOfPayer(e,pid)})`;}).join(' + ')
           : (members.find(m=>m.id===e.paidBy)?.name||'?');
         const _c=ENG.perExp[e._k]||calcExp(e,t);// 引擎整數
         const baseTotalNum=_c.baseTotal;
@@ -6768,6 +6844,14 @@ function runSelfTest(){
       payMethodLabel(_mixE)==='混合'&&payMethodLabel(_sameE)==='現金'
       &&expUsesPayMethod(_mixE,'信用卡')===true&&expUsesPayMethod(_mixE,'電子錢包')===false
       &&payMethodLabel({payMethod:'信用卡',paidBy:'A'})==='信用卡');
+    // 多人各拆多段:某人再拆兩種方式,每段各自換匯,baseTotal=全部段加總,實付逐人軋平
+    const sMpSplit=calcExp({amount:36,currency:'OMR',paidBy:{A:24,B:12},paySplitBy:{A:[{method:'現金',amt:12},{method:'信用卡',amt:12}]},parts:['A','B','C'],splitMode:'equal',createdAt:9},t1);
+    ok('多人各拆多段:逐段換匯加總＝總額、實付逐人軋平、顯示混合',
+      sMpSplit.baseTotal===Math.round(12*_fxRate+12*85.5+12*_fxRate)
+      &&Math.abs((sMpSplit.paid.A||0)-(12*_fxRate+12*85.5))<1.5
+      &&Object.values(sMpSplit.paid).reduce((a,b)=>a+b,0)===sMpSplit.baseTotal
+      &&Object.values(sMpSplit.shares).reduce((a,b)=>a+b,0)===sMpSplit.baseTotal
+      &&payMethodLabel({paidBy:{A:24,B:12},paySplitBy:{A:[{method:'現金',amt:12},{method:'信用卡',amt:12}]},payMethods:{A:'現金',B:'現金'}})==='混合');
     // 一人拆兩種支付方式:單一付款人,兩段各自換匯,baseTotal=兩段加總,實付全歸該人,分攤軋平
     const sSplit=calcExp({amount:24,currency:'OMR',paidBy:'A',payMethodSplit:[{method:'現金',amt:12},{method:'信用卡',amt:12}],parts:['A','B','C'],splitMode:'equal',createdAt:9},t1);
     ok('一人拆兩種支付方式:逐段換匯加總＝總額、實付歸一人、分攤軋平',
